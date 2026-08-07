@@ -5,6 +5,37 @@ import audiomixer
 import synthio
 import ulab.numpy as np
 import audiobusio
+import adafruit_matrixkeypad
+
+# create matrix keypad
+cols = [digitalio.DigitalInOut(x) for x in (board.GP26, board.GP27, board.GP15)]
+rows = [digitalio.DigitalInOut(x) for x in (board.GP16, board.GP17, board.GP18, board.GP19)]
+matr_keys = ((1, 2, 3),
+        (4, 5, 6),
+        (7, 8, 9),
+        ('*', 0, '#'))
+        
+
+keypad = adafruit_matrixkeypad.Matrix_Keypad(rows, cols, matr_keys)
+
+# while True:
+#     keys = keypad.pressed_keys
+#     if keys:
+#         print("Pressed: ", keys)
+#     time.sleep(0.1)
+
+
+# matrix buttons
+btn_synth0 = 1
+btn_synth1 = 2
+btn_synth2 = 3
+btn_synth3 = 4
+
+btn_volUp = 7
+btn_volDown = '*'
+
+btn_octUp = 9
+btn_octDown = '#'
 
 # create switches
 key_C4 = digitalio.DigitalInOut(board.GP2)
@@ -67,6 +98,8 @@ std_env = synthio.Envelope(
                                 release_time=0.2
 )
 
+num_synths = 4
+
 length = 512
 # Generate raw floating-point sine values
 raw_sine = np.sin(np.linspace(0, 2 * np.pi, length, endpoint=False))
@@ -88,36 +121,91 @@ tri_wave = np.array(raw_tri, dtype=np.int16)
 
 
 
-mixer = audiomixer.Mixer(channel_count=1, sample_rate=22050, buffer_size=2048)
+mixer = audiomixer.Mixer(voice_count=num_synths, channel_count=1, sample_rate=22050, buffer_size=2048)
 #synth = synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=saw_wave)
 
 # 0: sawtooth, 1: square, 2: sine, 3: triangle
 synths = [synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=saw_wave),
           synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env),
-          synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=sine_wave),
-          synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=tri_wave)]
+          synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=tri_wave),
+          synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=sine_wave)]
 
 lfo_tremolo = synthio.LFO(rate=9, scale=-0.05, offset=0.4)
 
 audio.play(mixer)
-mixer.voice[0].play(synths[0])
-mixer.voice[0].level = 0.8
+for i in range(num_synths):
+    mixer.voice[i].play(synths[i])
+    mixer.voice[i].level = 0.8
 
 
 
 def play_loop():
     # 0: sawtooth, 1: square, 2: sine, 3: triangle
     active_synth = 0
+    volume = 0.8
+    octave = 0
+    
+    vol_up_pressed = 0
+    vol_down_pressed = 0
+    
+    oct_up_pressed = 0
+    oct_down_pressed = 0
     
     
     
     while True:
+        matrix_input = keypad.pressed_keys
+        if matrix_input:
+            
+            if matrix_input[0] == btn_volUp:
+                vol_up_pressed += 1
+            else:
+                vol_up_pressed = 0
+                
+            if matrix_input[0] == btn_volDown:
+                vol_down_pressed += 1
+            else:
+                vol_down_pressed = 0
+                
+            
+            if matrix_input[0] == btn_synth0:
+                synths[active_synth].release_all()
+                active_synth = 0
+            elif matrix_input[0] == btn_synth1:
+                synths[active_synth].release_all()
+                active_synth = 1
+            elif matrix_input[0] == btn_synth2:
+                synths[active_synth].release_all()
+                active_synth = 2
+            elif matrix_input[0] == btn_synth3:
+                synths[active_synth].release_all()
+                active_synth = 3
+        else:
+            vol_up_pressed = 0
+            vol_down_pressed = 0
+            
+        
+        if vol_up_pressed == 1:
+            print("volume up")
+            volume += 0.1
+            if volume > 0.9:
+                volume = 0.9
+            for i in range(num_synths):
+                mixer.voice[i].level = volume
+        elif vol_down_pressed == 1:
+            print("volume_down")
+            volume -= 0.1
+            if volume < 0.1:
+                volume = 0.1
+            for i in range(num_synths):
+                mixer.voice[i].level = volume
+        
         keys = read_keys()
         for key in keys:
             if (keys[key] == True) and (old_keys[key] == False):  # key pressed
-                synths[0].press((key))  # midi note 65 = F4
+                synths[active_synth].press((key))  # midi note 65 = F4
             elif (keys[key] == False) and (old_keys[key] == True):  # key released
-                synths[0].release((key))  # release the note we pressed
+                synths[active_synth].release((key))  # release the note we pressed
         old_keys.update(keys)
         time.sleep(0.01)
 
