@@ -1,0 +1,12 @@
+body {
+  margin: 0;
+  background-color: #15171A; /* Dark gray */
+  color: #F0F0F0;            /* Light gray text */
+  font-family: sans-serif;
+  
+  /* These 3 lines center everything perfectly */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
