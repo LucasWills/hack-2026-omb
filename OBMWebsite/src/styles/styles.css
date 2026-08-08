@@ -1,3 +1,7 @@
+/* =========================================
+   GLOBAL RESET & BASE STYLES
+========================================= */
+
 body {
   margin: 0;
   background: radial-gradient(circle at center, #1f1b2e 0%, #121017 100%);
@@ -29,6 +33,10 @@ body {
   width: 100%;
 }
 
+/* =========================================
+   SHARED SECTION STYLES
+========================================= */
+
 /* Distinct sections container wrapper with subtle alternating backgrounds and separator borders */
 .content-section {
   width: 100%;
@@ -53,7 +61,36 @@ body {
   background-color: rgba(14, 10, 22, 0.85);
 }
 
-/* Relative positioning container to anchor the expanded background */
+.visualizer-section-bg {
+  background-color: rgba(11, 7, 22, 0.9);
+  border-top: 2px solid #34ff25; /* Strong neon green accent line */
+}
+
+/* Shared Section Titles */
+.section-header-block {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.section-main-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #34ff25;
+  margin: 0 0 0.5rem 0;
+  text-shadow: 0 0 10px rgba(52, 255, 37, 0.4);
+}
+
+.section-subtitle {
+  font-size: 1rem;
+  color: #bfaee3;
+  margin: 0;
+}
+
+/* =========================================
+   1. HERO HEADER SECTION
+========================================= */
+
 .inner-card-wrapper {
   position: relative;
   display: inline-block;
@@ -131,7 +168,10 @@ body {
   text-shadow: 0 0 10px rgba(157, 94, 206, 0.6);
 }
 
-/* Instrument Showcase Section */
+/* =========================================
+   2. INSTRUMENT SHOWCASE SECTION
+========================================= */
+
 .instrument-showcase-section {
   width: 100%;
   display: flex;
@@ -200,28 +240,170 @@ body {
   color: #9d5ece;
 }
 
-/* Shared Section Titles */
-.section-header-block {
-  text-align: center;
-  margin-bottom: 1.75rem;
+/* =========================================
+   3. VISUALIZER COMMAND CENTER
+========================================= */
+
+.visualizer-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  padding: 2rem;
+  background-color: #05030a;
+  border-radius: 8px;
+  border: 1px solid rgba(107, 70, 239, 0.4);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+  position: relative;
+  overflow: hidden;
 }
 
-.section-main-title {
-  font-size: 1.8rem;
-  font-weight: 700;
+.visualizer-dashboard::before {
+  content: '';
+  position: absolute;
+  top: 30%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(52, 255, 37, 0.2), transparent);
+  box-shadow: 0 0 15px rgba(52, 255, 37, 0.1);
+  z-index: 0;
+}
+
+.hud-upper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.eq-block {
+  display: flex;
+  gap: 6px;
+  height: 100px;
+  align-items: flex-end;
+}
+
+.eq-bar {
+  width: 12px;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.eq-fill {
+  width: 100%;
+  background: linear-gradient(0deg, #6b46ef, #34ff25);
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(52, 255, 37, 0.5);
+  animation: eq-bounce 1.5s infinite ease-in-out alternate;
+}
+
+/* Center 3D Holographic Core */
+.core-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.canvas-wrapper {
+  position: absolute;
+  top: -20px;
+  width: 250px;
+  height: 250px;
+  z-index: 2;
+  /* Adds a subtle glow behind the 3D model */
+  border-radius: 50%;
+  box-shadow: inset 0 0 40px rgba(52, 255, 37, 0.1); 
+}
+
+.octave-readout {
+  position: absolute;
+  bottom: 0px;
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: #dcd6f7;
   letter-spacing: 2px;
-  color: #34ff25;
-  margin: 0 0 0.5rem 0;
-  text-shadow: 0 0 10px rgba(52, 255, 37, 0.4);
+  background: rgba(107, 70, 239, 0.2);
+  padding: 4px 10px;
+  border: 1px solid rgba(107, 70, 239, 0.5);
+  border-radius: 4px;
+  z-index: 3;
 }
 
-.section-subtitle {
-  font-size: 1rem;
-  color: #bfaee3;
-  margin: 0;
+.hud-lower {
+  display: flex;
+  justify-content: center;
+  z-index: 1;
 }
 
-/* Team Photo Section */
+.keyboard-layout {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.synth-key {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  border-radius: 4px;
+  padding-bottom: 10px;
+  transition: all 0.1s ease-out;
+}
+
+.white-key {
+  width: 40px;
+  height: 120px;
+  background-color: #1a1625;
+  border: 1px solid #3a3253;
+  color: #6c638e;
+}
+
+.black-key {
+  width: 28px;
+  height: 80px;
+  background-color: #0b0716;
+  border: 1px solid #6b46ef;
+  color: #4a3b7d;
+  margin-left: -16px;
+  margin-right: -16px;
+  z-index: 2;
+}
+
+.key-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.key-active {
+  background-color: #34ff25;
+  color: #000;
+  box-shadow: 0 0 20px rgba(52, 255, 37, 0.8);
+  transform: translateY(2px);
+}
+
+@keyframes eq-bounce {
+  0% { height: 10%; }
+  50% { height: 90%; }
+  100% { height: 30%; }
+}
+
+/* =========================================
+   4. TEAM PHOTO SECTION
+========================================= */
+
 .team-photo-container {
   width: 100%;
   border-radius: 10px;
@@ -238,7 +420,10 @@ body {
   display: block;
 }
 
-/* Team Members Section (Left Aligned Photo, Right Text) */
+/* =========================================
+   5. TEAM MEMBERS SECTION
+========================================= */
+
 .members-list-container {
   display: flex;
   flex-direction: column;
@@ -303,7 +488,10 @@ body {
   line-height: 1.4;
 }
 
-/* Responsive layout adjustments for mobile screens */
+/* =========================================
+   RESPONSIVE DESIGN (MOBILE)
+========================================= */
+
 @media (max-width: 768px) {
   .member-card {
     flex-direction: column;
@@ -313,5 +501,10 @@ body {
   
   .member-info-wrapper {
     text-align: center;
+  }
+  
+  .hud-upper {
+    flex-direction: column;
+    gap: 2rem;
   }
 }
