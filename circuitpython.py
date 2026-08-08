@@ -5,6 +5,7 @@ import audiomixer
 import synthio
 import ulab.numpy as np
 import audiobusio
+import analogio
 import adafruit_matrixkeypad
 
 # create matrix keypad
@@ -87,6 +88,25 @@ old_keys = {
         72: False
 }
 
+# create analog in for slider
+
+slider = analogio.AnalogIn(board.A2)
+
+modulator_multiplier = 0.2
+
+def get_modulation():
+    # value from 0 to 3.3
+    normalized_val = (slider.value * 3.3) / 65535
+    
+    # zero to one with lower end cut off
+    out_val = (normalized_val - 0.7) / (3.3 - 0.7)
+    # make it smaller
+    out_val *= modulator_multiplier
+    if out_val < 0.0:
+        out_val = 0.0
+        
+    return out_val
+
 
 audio = audiobusio.I2SOut(bit_clock=board.GP20, word_select=board.GP21, data=board.GP22)
 
@@ -130,7 +150,7 @@ synths = [synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_e
           synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=tri_wave),
           synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=sine_wave)]
 
-lfo_tremolo = synthio.LFO(rate=9, scale=-0.05, offset=0.4)
+lfo_tremolo = synthio.LFO(rate=2, scale=0.1, offset=0.9)
 
 audio.play(mixer)
 for i in range(num_synths):
@@ -151,9 +171,18 @@ def play_loop():
     oct_up_pressed = 0
     oct_down_pressed = 0
     
+    lfo_tremolo.offset = volume
+    for i in range(num_synths):
+        mixer.voice[i].level = lfo_tremolo
     
-    
+    # play loop!
     while True:
+        
+        print(get_modulation())
+        
+        lfo_tremolo.scale = -get_modulation()
+        
+        
         matrix_input = keypad.pressed_keys
         if matrix_input:
             
@@ -166,6 +195,14 @@ def play_loop():
                 vol_down_pressed += 1
             else:
                 vol_down_pressed = 0
+            if matrix_input[0] == btn_octUp:
+                oct_up_pressed += 1
+            else:
+                oct_up_pressed = 0 
+            if matrix_input[0] == btn_octDown:
+                oct_down_pressed += 1
+            else:
+                oct_down_pressed = 0
                 
             
             if matrix_input[0] == btn_synth0:
@@ -183,6 +220,8 @@ def play_loop():
         else:
             vol_up_pressed = 0
             vol_down_pressed = 0
+            oct_up_pressed = 0
+            oct_down_pressed = 0
             
         
         if vol_up_pressed == 1:
@@ -190,35 +229,34 @@ def play_loop():
             volume += 0.1
             if volume > 0.9:
                 volume = 0.9
-            for i in range(num_synths):
-                mixer.voice[i].level = volume
+            lfo_tremolo.offset = volume
         elif vol_down_pressed == 1:
-            print("volume_down")
+            print("volume down")
             volume -= 0.1
             if volume < 0.1:
                 volume = 0.1
-            for i in range(num_synths):
-                mixer.voice[i].level = volume
+            lfo_tremolo.offset = volume
+
+        if oct_up_pressed == 1:
+            print("octave up")
+            synths[active_synth].release_all()
+            octave += 1
+            if octave > 2:
+                octave = 2
+        if oct_down_pressed == 1:
+            print("octave down")
+            synths[active_synth].release_all()
+            octave -= 1
+            if octave < -2:
+                octave = -2
         
         keys = read_keys()
         for key in keys:
-            if (keys[key] == True) and (old_keys[key] == False):  # key pressed
-                synths[active_synth].press((key))  # midi note 65 = F4
-            elif (keys[key] == False) and (old_keys[key] == True):  # key released
-                synths[active_synth].release((key))  # release the note we pressed
+            if (keys[key] == True) and (old_keys[key] == False): # key pressed
+                synths[active_synth].press((key+(octave*12)))
+            elif (keys[key] == False) and (old_keys[key] == True): # key released
+                synths[active_synth].release((key+(octave*12)))
         old_keys.update(keys)
         time.sleep(0.01)
 
 play_loop()
-
-
-
-synths[0].press((60))  # midi note 65 = F4
-time.sleep(1.0)
-synths[0].release((60))  # release the note we pressed
-time.sleep(0.5)
-synths[0].press((60))  # midi note 65 = F4
-time.sleep(1.0)
-synths[0].release((60))  # release the note we pressed
-time.sleep(0.5)
-mixer.voice[0].level = (mixer.voice[0].level - 0.1) % 0.4  # reduce volume each pass
