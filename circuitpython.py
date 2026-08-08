@@ -1,5 +1,8 @@
 import time
 import board
+import busio
+import displayio
+import i2cdisplaybus
 import digitalio
 import audiomixer
 import synthio
@@ -7,6 +10,12 @@ import ulab.numpy as np
 import audiobusio
 import analogio
 import adafruit_matrixkeypad
+import adafruit_displayio_ssd1306
+import tracks
+from adafruit_display_text.bitmap_label import Label
+from terminalio import FONT
+
+
 
 # create matrix keypad
 cols = [digitalio.DigitalInOut(x) for x in (board.GP26, board.GP27, board.GP15)]
@@ -30,13 +39,67 @@ keypad = adafruit_matrixkeypad.Matrix_Keypad(rows, cols, matr_keys)
 btn_synth0 = 1
 btn_synth1 = 2
 btn_synth2 = 3
-btn_synth3 = 4
 
 btn_volUp = 7
 btn_volDown = '*'
 
 btn_octUp = 9
 btn_octDown = '#'
+
+
+
+
+# create I2C connection to oled
+
+displayio.release_displays()
+
+main_group = displayio.Group()
+
+i2c = busio.I2C(scl=board.GP1, sda=board.GP0)
+
+display_bus = i2cdisplaybus.I2CDisplayBus(i2c, device_address = 0x3C)
+
+display = adafruit_displayio_ssd1306.SSD1306(display_bus, width=128, height=64)
+
+# Create a Label to show the readings. If you have a very small
+# display you may need to change to scale=1.
+display_output_label = Label(FONT, text="", scale=1)
+
+# create labels to display at locations
+disp_synth_label = Label(FONT, text="", scale=1)
+disp_synth_label.anchor_point = (0, 0)
+disp_synth_label.anchored_position = (4, 0)
+
+disp_track_label = Label(FONT, text="", scale=1)
+disp_track_label.anchor_point = (0, 0)
+disp_track_label.anchored_position = (4, 10)
+
+disp_volume_label = Label(FONT, text="", scale=1)
+disp_volume_label.anchor_point = (0, 0)
+disp_volume_label.anchored_position = (4, 20)
+
+disp_octave_label = Label(FONT, text="", scale=1)
+disp_octave_label.anchor_point = (0, 0)
+disp_octave_label.anchored_position = (4, 30)
+
+disp_mod_label = Label(FONT, text="", scale=1)
+disp_mod_label.anchor_point = (0, 0)
+disp_mod_label.anchored_position = (4, 40)
+
+
+# add the labels to the main_group
+main_group.append(disp_synth_label)
+main_group.append(disp_track_label)
+main_group.append(disp_volume_label)
+main_group.append(disp_octave_label)
+main_group.append(disp_mod_label)
+
+# set the main_group as the root_group of the built-in DISPLAY
+display.root_group = main_group
+
+# Update the label.text property to change the text on the display
+#display_output_label.text = f"Range: {1}mm"
+
 
 # create switches
 key_C4 = digitalio.DigitalInOut(board.GP2)
@@ -110,15 +173,14 @@ def get_modulation():
 
 audio = audiobusio.I2SOut(bit_clock=board.GP20, word_select=board.GP21, data=board.GP22)
 
-# I2S audio on PropMaker Feather RP20
-
 std_env = synthio.Envelope(
-                                attack_time=0.1,
-                                sustain_level=0.7,
-                                release_time=0.2
+                            attack_time=0.1,
+                            sustain_level=0.7,
+                            release_time=0.2
 )
-
-num_synths = 4
+# number pf playable synths
+num_synths = 3
+num_backsynths = 2
 
 length = 512
 # Generate raw floating-point sine values
@@ -141,14 +203,17 @@ tri_wave = np.array(raw_tri, dtype=np.int16)
 
 
 
-mixer = audiomixer.Mixer(voice_count=num_synths, channel_count=1, sample_rate=22050, buffer_size=2048)
+mixer = audiomixer.Mixer(voice_count=num_synths+num_backsynths, channel_count=1, sample_rate=22050, buffer_size=2048)
 #synth = synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=saw_wave)
 
-# 0: sawtooth, 1: square, 2: sine, 3: triangle
+# 0: sawtooth, 1: square, 2: triangle
 synths = [synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=saw_wave),
           synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env),
-          synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=tri_wave),
-          synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=sine_wave)]
+          synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=tri_wave)]
+
+backSynths = [synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=tri_wave),
+              synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=saw_wave)]
+
 
 lfo_tremolo = synthio.LFO(rate=2, scale=0.1, offset=0.9)
 
@@ -157,11 +222,19 @@ for i in range(num_synths):
     mixer.voice[i].play(synths[i])
     mixer.voice[i].level = 0.8
 
+for i in range(num_backsynths):
+    mixer.voice[i + num_synths].play(backSynths[i])
+    mixer.voice[i + num_synths].level = 0.6
 
+
+### TODO IMPLIMENT PLAYBACK OF TRACKS USING BACKSYNTHS
 
 def play_loop():
-    # 0: sawtooth, 1: square, 2: sine, 3: triangle
+    # 0: sawtooth, 1: square, 2: triangle
+    clock = 0
     active_synth = 0
+    synth_names = ["Sawtooth", "Square", "Triangle"]
+    active_synth_name = synth_names[active_synth]
     volume = 0.8
     octave = 0
     
@@ -177,8 +250,21 @@ def play_loop():
     
     # play loop!
     while True:
+        # run every 10 ticks
+        if (clock % 10 == 0):
+            
+            print(get_modulation())
+            
+            active_synth_name = synth_names[active_synth]
+            
+            disp_synth_label.text = f"Active Sound: {active_synth_name}"
+            disp_track_label.text = f"Track: {0}%"
+            disp_volume_label.text = f"Volume: {round(volume * 100) + 10}%"
+            disp_octave_label.text = f"Octave: +{octave}" if (octave > 0) else f"Octave: {octave}"
+            disp_mod_label.text = f"Modulation: {round((get_modulation() / modulator_multiplier) * 100)}%"
         
-        print(get_modulation())
+        
+
         
         lfo_tremolo.scale = -get_modulation()
         
@@ -214,9 +300,7 @@ def play_loop():
             elif matrix_input[0] == btn_synth2:
                 synths[active_synth].release_all()
                 active_synth = 2
-            elif matrix_input[0] == btn_synth3:
-                synths[active_synth].release_all()
-                active_synth = 3
+
         else:
             vol_up_pressed = 0
             vol_down_pressed = 0
@@ -257,6 +341,7 @@ def play_loop():
             elif (keys[key] == False) and (old_keys[key] == True): # key released
                 synths[active_synth].release((key+(octave*12)))
         old_keys.update(keys)
+        clock += 1
         time.sleep(0.01)
 
 play_loop()
