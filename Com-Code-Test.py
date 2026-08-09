@@ -1,4 +1,3 @@
-import json
 import time
 import array
 import board
@@ -18,6 +17,40 @@ from tracks import track_2_chords, track_2_bass, track_2_name, track_2_tempo
 from adafruit_display_text.bitmap_label import Label
 from terminalio import FONT
 
+
+# === Website communication (ADDED — see "ADDED CIRCUITPYTHON CODE" list) ===
+import json
+
+_NOTE_NAMES = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+
+def _midi_to_name(midi_note):
+    return f"{_NOTE_NAMES[midi_note % 12]}{(midi_note // 12) - 1}"
+
+def _midi_to_freq(midi_note):
+    return round(440.0 * (2 ** ((midi_note - 69) / 12)), 2)
+
+# Two separate sets so clearing one source (e.g. switching backing tracks)
+# never wipes out notes that are actually being held on the physical keys.
+live_notes_web = set()
+track_notes_web = set()
+_last_web_send = 0.0
+_web_send_interval = 0.05  # ~20Hz over serial, plenty for the visualizer
+
+def _send_web_state():
+    global _last_web_send
+    now = time.monotonic()
+    if now - _last_web_send < _web_send_interval:
+        return
+    _last_web_send = now
+    all_notes = sorted(live_notes_web | track_notes_web)
+    note_names = [_midi_to_name(n) for n in all_notes]
+    freq = _midi_to_freq(all_notes[-1]) if all_notes else 0
+    vel = 100 if all_notes else 0
+    try:
+        print(json.dumps({"notes": note_names, "frequency": freq, "velocity": vel}))
+    except Exception:
+        pass
+# === End website communication setup ===
 
 
 # create inputs for matrix keypad
@@ -336,17 +369,21 @@ def play_loop():
                     if selected_bass[(8 * current_bar) + current_eighth][note] == 0:
                         if (8 * current_bar) + current_eighth == 0:
                             backSynths[0].release(note + 36)
+                            track_notes_web.discard(note + 36)  # ADDED
                             #print(f"off      {current_bar}    {current_eighth}   {note}")
                         elif selected_bass[((8 * current_bar) + current_eighth) - 1][note] == 1:
                             backSynths[0].release(note + 36)
+                            track_notes_web.discard(note + 36)  # ADDED
                             #print(f"off      {current_bar}    {current_eighth}   {note}")
 
                     if selected_bass[(8 * current_bar) + current_eighth][note] == 1:
                         if (8 * current_bar) + current_eighth == 0:
                             backSynths[0].press(note + 36)
+                            track_notes_web.add(note + 36)  # ADDED
                             #print(f"on      {current_bar}    {current_eighth}   {note}")
                         elif selected_bass[((8 * current_bar) + current_eighth) - 1][note] == 0:
                             backSynths[0].press(note + 36)
+                            track_notes_web.add(note + 36)  # ADDED
                             #print(f"on      {current_bar}    {current_eighth}   {note}")
                 
                 # chords
@@ -355,17 +392,21 @@ def play_loop():
                     if selected_chords[(8 * current_bar) + current_eighth][note] == 0:
                         if (8 * current_bar) + current_eighth == 0:
                             backSynths[1].release(note + 60)
+                            track_notes_web.discard(note + 60)  # ADDED
                             #print(f"off      {current_bar}    {current_eighth}   {note}")
                         elif selected_chords[((8 * current_bar) + current_eighth) - 1][note] == 1:
                             backSynths[1].release(note + 60)
+                            track_notes_web.discard(note + 60)  # ADDED
                             #print(f"off      {current_bar}    {current_eighth}   {note}")
 
                     if selected_chords[(8 * current_bar) + current_eighth][note] == 1:
                         if (8 * current_bar) + current_eighth == 0:
                             backSynths[1].press(note + 60)
+                            track_notes_web.add(note + 60)  # ADDED
                             #print(f"on      {current_bar}    {current_eighth}   {note}")
                         elif selected_chords[((8 * current_bar) + current_eighth) - 1][note] == 0:
                             backSynths[1].press(note + 60)
+                            track_notes_web.add(note + 60)  # ADDED
                             #print(f"on      {current_bar}    {current_eighth}   {note}")
 
 
@@ -417,12 +458,15 @@ def play_loop():
 
             if matrix_input[0] == btn_synth0:
                 synths[active_synth].release_all()
+                live_notes_web.clear()  # ADDED
                 active_synth = 0
             elif matrix_input[0] == btn_synth1:
                 synths[active_synth].release_all()
+                live_notes_web.clear()  # ADDED
                 active_synth = 1
             elif matrix_input[0] == btn_synth2:
                 synths[active_synth].release_all()
+                live_notes_web.clear()  # ADDED
                 active_synth = 2
 
             elif matrix_input[0] == btn_track1:
@@ -432,6 +476,7 @@ def play_loop():
                 last_eighth_time = -1000000.0
                 for synth in backSynths:
                     synth.release_all()
+                track_notes_web.clear()  # ADDED
                 selected_chords = track_1_chords()
                 selected_bass = track_1_bass()
                 selected_track = track_1_name()
@@ -445,6 +490,7 @@ def play_loop():
                 last_eighth_time = -1000000.0
                 for synth in backSynths:
                     synth.release_all()
+                track_notes_web.clear()  # ADDED
                 selected_chords = track_2_chords()
                 selected_bass = track_2_bass()
                 selected_track = track_2_name()
@@ -461,6 +507,7 @@ def play_loop():
                 last_eighth_time = -1000000.0
                 for synth in backSynths:
                     synth.release_all()
+                track_notes_web.clear()  # ADDED
                 disp_metr_label.text = f"PLAYBACK STOPPED"
 
 
@@ -489,11 +536,13 @@ def play_loop():
 
         if oct_up_pressed == 1:
             synths[active_synth].release_all()
+            live_notes_web.clear()  # ADDED
             octave += 1
             if octave > 2:
                 octave = 2
         if oct_down_pressed == 1:
             synths[active_synth].release_all()
+            live_notes_web.clear()  # ADDED
             octave -= 1
             if octave < -2:
                 octave = -2
@@ -503,6 +552,7 @@ def play_loop():
                 paused = True
                 for synth in backSynths:
                     synth.release_all()
+                track_notes_web.clear()  # ADDED
             else:
                 paused = False
                 
@@ -513,13 +563,18 @@ def play_loop():
         for key in keys:
             if (keys[key] == True) and (old_keys[key] == False): # key pressed
                 synths[active_synth].press((key+(octave*12)))
+                live_notes_web.add(key+(octave*12))  # ADDED
                 if not active_synth == 1:
                     synths[active_synth].press((key+(octave*12)-12))
+                    live_notes_web.add(key+(octave*12)-12)  # ADDED
             elif (keys[key] == False) and (old_keys[key] == True): # key released
                 synths[active_synth].release((key+(octave*12)))
+                live_notes_web.discard(key+(octave*12))  # ADDED
                 if not active_synth == 1:
                     synths[active_synth].release((key+(octave*12)-12))
+                    live_notes_web.discard(key+(octave*12)-12)  # ADDED
         old_keys.update(keys)
+        _send_web_state()  # ADDED
         clock += 1
         time.sleep(0.01)
 

@@ -3,11 +3,9 @@ import useScrollReveal from './useScrollReveal';
 import Modal from './Modal';
 import trackPlaceholderImg from '../assets/shinji.jpeg'; 
 
-// Updated with exactly 3 tracks
 const setlistTracks = [
   { id: 1, number: "TRACK 01", title: "Billie Jean", duration: "4:54", type: "Main Set", album: "Thriller", artist: "Michael Jackson", photo: trackPlaceholderImg },
-  { id: 2, number: "TRACK 02", title: "Awakening Sequence", duration: "1:45", type: "Main Set", album: "SYSTEM: INITIALIZE", artist: "ONE MAN BAND", photo: trackPlaceholderImg },
-  { id: 3, number: "TRACK 03", title: "Cybernetic Pulse", duration: "2:10", type: "Main Set", album: "SYSTEM: INITIALIZE", artist: "ONE MAN BAND", photo: trackPlaceholderImg }
+  { id: 2, number: "TRACK 02", title: "Love Sign", duration: "4:31", type: "Main Set", album: "1-800-NEW-FUNK", artist: "Prince", photo: trackPlaceholderImg }
 ];
 
 export default function SetlistSection() {

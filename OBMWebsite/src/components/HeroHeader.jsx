@@ -31,82 +31,79 @@ export default function HeroHeader() {
     node.style.setProperty('--gy', `${gy}%`);
   };
 
-  // Smooth scroll to a section. Handled in JS (rather than relying only on
-  // href anchors) so we can honour prefers-reduced-motion and still update
-  // the URL hash for shareable/bookmarkable links.
+  // Smooth scroll to a section. Includes an offset (-80px) so the
+  // persistent sticky nav doesn't cover the section header when you land.
   const handleNavClick = (e, target) => {
     e.preventDefault();
     const node = document.getElementById(target);
     if (!node) return;
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    node.scrollIntoView({
+    const y = node.getBoundingClientRect().top + window.scrollY - 80;
+    
+    window.scrollTo({
+      top: y,
       behavior: prefersReducedMotion ? 'auto' : 'smooth',
-      block: 'start',
     });
+    
     if (window.history?.replaceState) {
       window.history.replaceState(null, '', `#${target}`);
     }
   };
 
-  // Calculate dynamic styles for the curtain effect. The hero panel is now
-  // compact (~40vh, see .hero-curtain-container) so it fades out over a
-  // shorter scroll distance than before, matching how quickly the
-  // Instrument Specification panel now rises to cover it.
+  // Calculate dynamic styles for the curtain effect.
   const fadeOpacity = Math.max(1 - scrollY / 420, 0);
   const fadeScale = Math.max(1 - scrollY / 3000, 0.92);
 
   return (
-    <div 
-      className="hero-curtain-container" 
-      style={{ opacity: fadeOpacity, transform: `scale(${fadeScale})` }}
-    >
-      <div className="inner-card-wrapper hero-intro">
-        <div className="solid-bg-rect"></div>
-        <div className="logo-border" ref={borderRef} onMouseMove={handleMove}>
-          
-          {/* New Diagonal Layout Wrapper */}
-          <div className="hero-content diagonal-layout">
-            
-            <div className="hero-logo-cell">
-              <img
-                src={logo}
-                alt="One Man Band Logo"
-                className="logo-graphic"
-              />
-            </div>
-            
-            <div className="hero-slash-cell">
-              <div className="slash-divider">/</div>
-            </div>
-            
-            <div className="hero-text-cell">
-              <div className="band-text-group">
-                <span className="band-text band-text-line1">ONE MAN</span>
-                <span className="band-text band-text-line2">BAND</span>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-
-        {/* Section navigation — sits directly under the title/logo block.
-            Deliberately quiet: small monospace caps, hairline separators and
-            the existing green accent only on hover/focus, so it never
-            competes with the wordmark above it. */}
-        <nav className="hero-nav" aria-label="Section navigation">
+    <>
+      {/* Persistent Nav: Sits globally fixed at the top of the screen */}
+      <nav className="site-persistent-nav" aria-label="Section navigation">
+        <div className="persistent-nav-container">
           {NAV_ITEMS.map((item) => (
             <a
               key={item.target}
               href={`#${item.target}`}
-              className="hero-nav-link"
+              className="persistent-nav-link"
               onClick={(e) => handleNavClick(e, item.target)}
             >
               {item.label}
             </a>
           ))}
-        </nav>
+        </div>
+      </nav>
+
+      {/* Hero Curtain: Fades out and stays sticky as you scroll */}
+      <div 
+        className="hero-curtain-container" 
+        style={{ opacity: fadeOpacity, transform: `scale(${fadeScale})` }}
+      >
+        <div className="inner-card-wrapper hero-intro">
+          <div className="logo-border" ref={borderRef} onMouseMove={handleMove}>
+            
+            <div className="hero-content diagonal-layout">
+              <div className="hero-logo-cell">
+                <img
+                  src={logo}
+                  alt="One Man Band Logo"
+                  className="logo-graphic"
+                />
+              </div>
+              
+              <div className="hero-slash-cell">
+                <div className="slash-divider">/</div>
+              </div>
+              
+              <div className="hero-text-cell">
+                <div className="band-text-group">
+                  <span className="band-text band-text-line1">ONE MAN</span>
+                  <span className="band-text band-text-line2">BAND</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
