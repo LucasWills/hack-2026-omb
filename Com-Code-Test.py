@@ -1,120 +1,396 @@
-import math
-from array import array
-from machine import I2S, Pin
-from utime import ticks_ms, ticks_diff, sleep_ms, sleep_us
-
-# ADC 1
-SCK_PIN = 20
-WS_PIN = 21
-SD_PIN = 22
-
-# BUTTONS
-BUTTON_PINS = [2, 3, 4, 5, 6, 7, 8]
-BUTTON_PULL = Pin.PULL_DOWN
-
-# AUDIO STUFF
-SAMPLE_RATE = 22050
-BUFFER_FRAMES = 256
-MAX_AMPLITUDE = 0.5
-
-# Frequencies for the notes
-notes = [440.0, 554.37, 659.25, 783.99, 880.0, 987.77, 1046.5]
+import time
+import board
+import busio
+import displayio
+import i2cdisplaybus
+import digitalio
+import audiomixer
+import synthio
+import ulab.numpy as np
+import audiobusio
+import analogio
+import adafruit_matrixkeypad
+import adafruit_displayio_ssd1306
+import tracks
+from adafruit_display_text.bitmap_label import Label
+from terminalio import FONT
 
 
-# Function to create the I2S connection
-def create_i2s():
-    return I2S(
-        0,
-        sck=Pin(SCK_PIN),
-        ws=Pin(WS_PIN),
-        sd=Pin(SD_PIN),
-        mode=I2S.TX,
-        bits=16,
-        format=I2S.STEREO,
-        rate=SAMPLE_RATE,
-        ibuf=BUFFER_FRAMES * 4,
-    )
 
-# Function to create the button connections based on the button pin array
-def create_buttons():
-    return [Pin(pin, Pin.IN, pull=BUTTON_PULL) for pin in BUTTON_PINS]
+# create matrix keypad
+cols = [digitalio.DigitalInOut(x) for x in (board.GP26, board.GP27, board.GP15)]
+rows = [digitalio.DigitalInOut(x) for x in (board.GP16, board.GP17, board.GP18, board.GP19)]
+matr_keys = ((1, 2, 3),
+        (4, 5, 6),
+        (7, 8, 9),
+        ('*', 0, '#'))
+        
 
-# Function to read all the buttons
-def read_buttons(buttons):
-    pressed = []
-    for index, button in enumerate(buttons):
-        if button.value():
-            pressed.append(index)
-    return pressed
+keypad = adafruit_matrixkeypad.Matrix_Keypad(rows, cols, matr_keys)
 
-# Generate waveform based on the preset name
-def voice_func(phase, presetName):
-    if presetName == "sine":
-        return math.sin(phase)
-    elif presetName == "square":
-        return 1.0 if phase < math.pi else -1.0
-    elif presetName == "sawtooth":
-        return (phase / math.pi) - 1.0
-    elif presetName == "triangle":
-        return 2.0 * abs((phase / math.pi) - 1.0) - 1.0
-    else:
-        return math.sin(phase)
+# while True:
+#     keys = keypad.pressed_keys
+#     if keys:
+#         print("Pressed: ", keys)
+#     time.sleep(0.1)
+
+
+# matrix buttons
+btn_synth0 = 1
+btn_synth1 = 2
+btn_synth2 = 3
+
+btn_volUp = 7
+btn_volDown = '*'
+
+btn_octUp = 9
+btn_octDown = '#'
+
+
+
+
+# create I2C connection to oled
+
+displayio.release_displays()
+
+main_group = displayio.Group()
+
+i2c = busio.I2C(scl=board.GP1, sda=board.GP0)
+
+display_bus = i2cdisplaybus.I2CDisplayBus(i2c, device_address = 0x3C)
+
+display = adafruit_displayio_ssd1306.SSD1306(display_bus, width=128, height=64)
+
+
+# synth
+disp_synth_label = Label(FONT, text="", scale=1)
+disp_synth_label.anchor_point = (0, 0)
+disp_synth_label.anchored_position = (4, 0)
+
+# track
+disp_track_label = Label(FONT, text="", scale=1)
+disp_track_label.anchor_point = (0, 0)
+disp_track_label.anchored_position = (4, 10)
+
+# volume
+disp_volume_label = Label(FONT, text="", scale=1)
+disp_volume_label.anchor_point = (0, 0)
+disp_volume_label.anchored_position = (4, 20)
+
+# octave
+disp_octave_label = Label(FONT, text="", scale=1)
+disp_octave_label.anchor_point = (0, 0)
+disp_octave_label.anchored_position = (4, 30)
+
+# modulation
+disp_mod_label = Label(FONT, text="", scale=1)
+disp_mod_label.anchor_point = (0, 0)
+disp_mod_label.anchored_position = (4, 40)
+
+# metronome
+disp_metr_label = Label(FONT, text="", scale=1)
+disp_metr_label.anchor_point = (0, 0)
+disp_metr_label.anchored_position = (4, 50)
+
+
+# add the labels to the main_group
+main_group.append(disp_synth_label)
+main_group.append(disp_track_label)
+main_group.append(disp_volume_label)
+main_group.append(disp_octave_label)
+main_group.append(disp_mod_label)
+main_group.append(disp_metr_label)
+
+# set the main_group as the root_group of the built-in DISPLAY
+display.root_group = main_group
+
+# Update the label.text property to change the text on the display
+#display_output_label.text = f"Range: {1}mm"
+
+
+# create switches
+key_C4 = digitalio.DigitalInOut(board.GP2)
+key_Db4 = digitalio.DigitalInOut(board.GP3)
+key_D4 = digitalio.DigitalInOut(board.GP4)
+key_Eb4 = digitalio.DigitalInOut(board.GP5)
+key_E4 = digitalio.DigitalInOut(board.GP6)
+key_F4 = digitalio.DigitalInOut(board.GP7)
+key_Gb4 = digitalio.DigitalInOut(board.GP8)
+key_G4 = digitalio.DigitalInOut(board.GP9)
+key_Ab4 = digitalio.DigitalInOut(board.GP10)
+key_A4 = digitalio.DigitalInOut(board.GP11)
+key_Bb4 = digitalio.DigitalInOut(board.GP12)
+key_B4 = digitalio.DigitalInOut(board.GP13)
+key_C5 = digitalio.DigitalInOut(board.GP14)
+
+
+def read_keys():
+    keys = {
+        60: key_C4.value,
+        61: key_Db4.value,
+        62: key_D4.value,
+        63: key_Eb4.value,
+        64: key_E4.value,
+        65: key_F4.value,
+        66: key_Gb4.value,
+        67: key_G4.value,
+        68: key_Ab4.value,
+        69: key_A4.value,
+        70: key_Bb4.value,
+        71: key_B4.value,
+        72: key_C5.value
+    }
+    return keys
+
+old_keys = {
+        60: False,
+        61: False,
+        62: False,
+        63: False,
+        64: False,
+        65: False,
+        66: False,
+        67: False,
+        68: False,
+        69: False,
+        70: False,
+        71: False,
+        72: False
+}
+
+# create analog in for slider
+
+slider = analogio.AnalogIn(board.A2)
+
+modulator_multiplier = 0.2
+
+def get_modulation():
+    # value from 0 to 3.3
+    normalized_val = (slider.value * 3.3) / 65535
     
-
-# Voice class, representing a single audio voice sound
-class Voice:
-    def __init__(self, freq, ampl, presetName):
-        self.freq = freq
-        self.ampl = ampl
-        self.presetName = presetName
-        self.phase = 0.0
-        self.phase_inc = 2.0 * math.pi * self.freq / SAMPLE_RATE
-
-    def sample(self):
-        value = voice_func(self.phase, self.presetName) * self.ampl
-        self.phase += self.phase_inc
-        if self.phase >= 2.0 * math.pi:
-            self.phase -= 2.0 * math.pi
-        return value
-
-# Turn individual voices into an audio buffer we can send over I2S
-def render_frame(voices):
-    buffer = array('h', [0] * (BUFFER_FRAMES * 2)) 
-    for frame in range(BUFFER_FRAMES):
-        mix = 0.0
-        for voice in voices:
-            mix += voice.sample()
-        sample = int(mix * MAX_AMPLITUDE * 32767)
-        if sample > 32767:
-            sample = 32767
-        elif sample < -32768:
-            sample = -32768
-        buffer[frame * 2] = sample
-        buffer[frame * 2 + 1] = sample
-    return buffer
+    # zero to one with lower end cut off
+    out_val = (normalized_val - 0.7) / (3.3 - 0.7)
+    # make it smaller
+    out_val *= modulator_multiplier
+    if out_val < 0.0:
+        out_val = 0.0
+        
+    return out_val
 
 
-def main():
-    i2s = create_i2s()
-    buttons = create_buttons()
-    voices = []
+audio = audiobusio.I2SOut(bit_clock=board.GP20, word_select=board.GP21, data=board.GP22)
 
-    try:
-        while True:
-            pressed = read_buttons(buttons)
-            if pressed:
-                voices = [Voice(notes[index], 0.3, "sine") for index in pressed]
-                print(f"Pressed buttons: {pressed}, Voices: {[voice.freq for voice in voices]}")
+std_env = synthio.Envelope(
+                            attack_time=0.1,
+                            sustain_level=0.7,
+                            release_time=0.2
+)
+# number pf playable synths
+num_synths = 3
+num_backsynths = 2
+
+length = 512
+# Generate raw floating-point sine values
+raw_sine = np.sin(np.linspace(0, 2 * np.pi, length, endpoint=False))
+
+# Scale and convert directly to a signed 16-bit integer array via dtype
+sine_wave = np.array(raw_sine * 32767, dtype=np.int16)
+
+
+
+# 2. Sawtooth Wave (Ramps linearly from -32767 to 32767)
+saw_wave = np.array(np.linspace(-32767, 32767, length, endpoint=False), dtype=np.int16)
+
+# 3. Triangle Wave (Ramps up to 32767, then down to -32767)
+raw_tri = np.zeros(length)
+half_len = length // 2
+raw_tri[:half_len] = np.linspace(-32767, 32767, half_len, endpoint=False)
+raw_tri[half_len:] = np.linspace(32767, -32767, half_len, endpoint=False)
+tri_wave = np.array(raw_tri, dtype=np.int16)
+
+
+
+mixer = audiomixer.Mixer(voice_count=num_synths+num_backsynths, channel_count=1, sample_rate=22050, buffer_size=2048)
+#synth = synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=saw_wave)
+
+# 0: sawtooth, 1: square, 2: triangle
+synths = [synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=saw_wave),
+          synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env),
+          synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=tri_wave)]
+
+backSynths = [synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=tri_wave),
+              synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=saw_wave)]
+
+
+lfo_tremolo = synthio.LFO(rate=2, scale=0.1, offset=0.9)
+
+audio.play(mixer)
+for i in range(num_synths):
+    mixer.voice[i].play(synths[i])
+    mixer.voice[i].level = 0.8
+
+for i in range(num_backsynths):
+    mixer.voice[i + num_synths].play(backSynths[i])
+    mixer.voice[i + num_synths].level = 0.6
+
+NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+### TODO IMPLIMENT PLAYBACK OF TRACKS USING BACKSYNTHS
+
+def play_loop():
+    # 0: sawtooth, 1: square, 2: triangle
+    clock = 0
+    active_synth = 0
+    synth_names = ["Sawtooth", "Square", "Triangle"]
+    active_synth_name = synth_names[active_synth]
+    volume = 0.8
+    octave = 0
+    # BPM / 60 = BPS
+    # 1 / BPS = seconds per beat
+    BPS = 120 / 60
+    sec_per_eighth = 1.0 / (BPS * 2)
+    current_eighth = 0
+    current_bar = 0
+    
+    last_eighth_time = 0
+    
+    vol_up_pressed = 0
+    vol_down_pressed = 0
+    
+    oct_up_pressed = 0
+    oct_down_pressed = 0
+    
+    lfo_tremolo.offset = volume
+    for i in range(num_synths):
+        mixer.voice[i].level = lfo_tremolo
+    
+    # play loop!
+    while True:
+        
+        # run every 10 ticks
+        if (clock % 10 == 0):
+            
+            print(get_modulation())
+            
+            active_synth_name = synth_names[active_synth]
+            
+            disp_synth_label.text = f"Active Sound: {active_synth_name}"
+            disp_track_label.text = f"Track: {0}%"
+            disp_volume_label.text = f"Volume: {round(volume * 100) + 10}%"
+            disp_octave_label.text = f"Octave: +{octave}" if (octave > 0) else f"Octave: {octave}"
+            disp_mod_label.text = f"Modulation: {round((get_modulation() / modulator_multiplier) * 100)}%"
+            
+        
+        
+        if (time.monotonic() >= last_eighth_time + sec_per_eighth):
+            current_eighth += 1
+            if current_eighth > 8:
+                current_eighth = 0
+                current_bar += 1
+            
+        
+        lfo_tremolo.scale = -get_modulation()
+        
+        
+        matrix_input = keypad.pressed_keys
+        if matrix_input:
+            
+            if matrix_input[0] == btn_volUp:
+                vol_up_pressed += 1
             else:
-                now = ticks_ms()
+                vol_up_pressed = 0
+                
+            if matrix_input[0] == btn_volDown:
+                vol_down_pressed += 1
+            else:
+                vol_down_pressed = 0
+            if matrix_input[0] == btn_octUp:
+                oct_up_pressed += 1
+            else:
+                oct_up_pressed = 0 
+            if matrix_input[0] == btn_octDown:
+                oct_down_pressed += 1
+            else:
+                oct_down_pressed = 0
+                
+            
+            if matrix_input[0] == btn_synth0:
+                synths[active_synth].release_all()
+                active_synth = 0
+            elif matrix_input[0] == btn_synth1:
+                synths[active_synth].release_all()
+                active_synth = 1
+            elif matrix_input[0] == btn_synth2:
+                synths[active_synth].release_all()
+                active_synth = 2
 
+        else:
+            vol_up_pressed = 0
+            vol_down_pressed = 0
+            oct_up_pressed = 0
+            oct_down_pressed = 0
+            
+        
+        if vol_up_pressed == 1:
+            print("volume up")
+            volume += 0.1
+            if volume > 0.9:
+                volume = 0.9
+            lfo_tremolo.offset = volume
+        elif vol_down_pressed == 1:
+            print("volume down")
+            volume -= 0.1
+            if volume < 0.1:
+                volume = 0.1
+            lfo_tremolo.offset = volume
 
-            buffer = render_frame(voices)
-            i2s.write(buffer)
-            print(ticks_ms())
-            sleep_us(1000)
-    finally:
-        i2s.deinit()
+        if oct_up_pressed == 1:
+            print("octave up")
+            synths[active_synth].release_all()
+            octave += 1
+            if octave > 2:
+                octave = 2
+        if oct_down_pressed == 1:
+            print("octave down")
+            synths[active_synth].release_all()
+            octave -= 1
+            if octave < -2:
+                octave = -2
+        
+        keys = read_keys()
 
+        for key in keys:
+            midi_note = key + (octave * 12)
+            
+            if (keys[key] == True) and (old_keys[key] == False): # key pressed
+                synths[active_synth].press(midi_note)
+                
+                freq = 440.0 * (2 ** ((midi_note - 69) / 12))
+                pitch = NOTE_NAMES[midi_note % 12]
+                note_octave = (midi_note // 12) - 1
+                vel = int(volume * 127) # Map synth volume to 0-127 MIDI velocity
+                
+                print(f'{{"pitch": "{pitch}", "octave": {note_octave}, "frequency": {freq:.1f}, "velocity": {vel}}}')
+                
+            elif (keys[key] == False) and (old_keys[key] == True): # key released
+                synths[active_synth].release(midi_note)
+                
+                freq = 440.0 * (2 ** ((midi_note - 69) / 12))
+                pitch = NOTE_NAMES[midi_note % 12]
+                note_octave = (midi_note // 12) - 1
+                
+                print(f'{{"pitch": "{pitch}", "octave": {note_octave}, "frequency": {freq:.1f}, "velocity": 0}}')
+                
+        old_keys.update(keys)
 
-main()
+        for key in keys:
+            if (keys[key] == True) and (old_keys[key] == False): # key pressed
+                synths[active_synth].press((key+(octave*12)))
+            elif (keys[key] == False) and (old_keys[key] == True): # key released
+                synths[active_synth].release((key+(octave*12)))
+        old_keys.update(keys)
+        
+        clock += 1
+        time.sleep(0.01)
+
+play_loop()
