@@ -233,7 +233,9 @@ synths = [synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_e
           synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=pulse_wave),
           synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=tri_wave)]
 
+# bass
 backSynths = [synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=pulse_wave),
+# chords
               synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=saw_wave)]
 
 
@@ -327,18 +329,18 @@ def play_loop():
                     
                     if selected_bass[(8 * current_bar) + current_eighth][note] == 0:
                         if (8 * current_bar) + current_eighth == 0:
-                            backSynths[0].release(note + 48)
+                            backSynths[0].release(note + 36)
                             print(f"off      {current_bar}    {current_eighth}   {note}")
                         elif selected_bass[((8 * current_bar) + current_eighth) - 1][note] == 1:
-                            backSynths[0].release(note + 48)
+                            backSynths[0].release(note + 36)
                             print(f"off      {current_bar}    {current_eighth}   {note}") 
                     
                     if selected_bass[(8 * current_bar) + current_eighth][note] == 1:
                         if (8 * current_bar) + current_eighth == 0:
-                            backSynths[0].press(note + 48)
+                            backSynths[0].press(note + 36)
                             print(f"on      {current_bar}    {current_eighth}   {note}")
                         elif selected_bass[((8 * current_bar) + current_eighth) - 1][note] == 0:
-                            backSynths[0].press(note + 48)
+                            backSynths[0].press(note + 36)
                             print(f"on      {current_bar}    {current_eighth}   {note}")
 
 
