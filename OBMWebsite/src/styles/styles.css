@@ -1,4 +1,27 @@
 /* =========================================
+   DESIGN TOKENS
+   Backgrounds lifted very slightly for depth;
+   neon accents pulled back a touch so they read
+   as light within the scene rather than the whole show.
+========================================= */
+:root {
+  --bg-1: #191531;
+  --bg-2: #100c1a;
+  --panel-bg: rgba(18, 14, 32, 0.75);
+  --panel-border: rgba(112, 78, 225, 0.25);
+  --deep-panel: #0c0916;
+
+  --accent-green: #38e83a;
+  --accent-green-soft: rgba(56, 232, 58, 0.35);
+  --accent-purple: #6a4de0;
+  --accent-purple-soft: rgba(106, 77, 224, 0.35);
+  --accent-purple-text: #a172d6;
+
+  --text-primary: #f2f0f5;
+  --text-lavender: #c3b4e6;
+}
+
+/* =========================================
    GLOBAL RESET & FLUID LAYOUT
 ========================================= */
 
@@ -8,8 +31,8 @@
 
 body {
   margin: 0;
-  background: radial-gradient(circle at center, #161224 0%, #0a0810 100%);
-  color: #F0F0F0;
+  background: radial-gradient(circle at center, var(--bg-1) 0%, var(--bg-2) 100%);
+  color: var(--text-primary);
   font-family: 'Rajdhani', sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
@@ -17,15 +40,65 @@ body {
 }
 
 .bg-strip {
+  position: relative;
   width: 100%;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 4vw 2vw;
+  overflow: hidden;
+}
+
+/* Two large, slow-drifting glows that live behind the whole page so the
+   space between sections still feels like the same lit environment
+   instead of dead black gaps. */
+.bg-strip::before,
+.bg-strip::after {
+  content: '';
+  position: fixed;
+  width: 60vw;
+  height: 60vw;
+  max-width: 700px;
+  max-height: 700px;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.14;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bg-strip::before {
+  top: -12%;
+  left: -15%;
+  background: var(--accent-green);
+  animation: drift-a 34s ease-in-out infinite alternate;
+}
+
+.bg-strip::after {
+  bottom: -12%;
+  right: -15%;
+  background: var(--accent-purple);
+  animation: drift-b 40s ease-in-out infinite alternate;
+}
+
+@keyframes drift-a {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(6vw, 8vh); }
+}
+
+@keyframes drift-b {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-7vw, -6vh); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-strip::before, .bg-strip::after { animation: none; }
 }
 
 .main-layout-container {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -35,33 +108,82 @@ body {
   margin: 0 auto;
 }
 
+/* A faint signal line running through the gaps between sections, so
+   scrolling between them feels like following one continuous circuit
+   rather than jumping between disconnected boxes. */
+.main-layout-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--accent-purple-soft) 12%,
+    var(--accent-green-soft) 50%,
+    var(--accent-purple-soft) 88%,
+    transparent
+  );
+  opacity: 0.3;
+  z-index: -1;
+  animation: spine-pulse 6s ease-in-out infinite;
+}
+
+@keyframes spine-pulse {
+  0%, 100% { opacity: 0.18; }
+  50% { opacity: 0.38; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-layout-container::before { animation: none; }
+}
+
 .content-section {
   width: 100%;
   padding: 4rem clamp(2rem, 5vw, 6rem);
   border-radius: 16px;
-  border: 1px solid rgba(107, 70, 239, 0.25);
-  background: rgba(15, 11, 26, 0.75);
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
   backdrop-filter: blur(12px);
   box-shadow: 0 15px 50px rgba(0, 0, 0, 0.7);
+  position: relative;
 }
 
-.instrument-section-bg { background: linear-gradient(135deg, rgba(18, 14, 27, 0.8) 0%, rgba(10, 8, 16, 0.95) 100%); }
-.team-photo-section-bg { background: linear-gradient(135deg, rgba(23, 17, 36, 0.85) 0%, rgba(12, 9, 20, 0.95) 100%); }
-.team-members-section-bg { background: linear-gradient(135deg, rgba(14, 10, 22, 0.9) 0%, rgba(8, 5, 14, 0.98) 100%); }
-.visualizer-section-bg { background: linear-gradient(135deg, rgba(11, 7, 22, 0.95) 0%, rgba(5, 3, 10, 0.99) 100%); border-top: 3px solid #34ff25; }
-.setlist-section-bg { background: linear-gradient(135deg, rgba(20, 12, 35, 0.85) 0%, rgba(8, 5, 15, 0.98) 100%); border-left: 3px solid #6b46ef; }
+/* Soft top-edge glow on every section so the transition out of the
+   gap above feels lit rather than a hard cut into a box. */
+.content-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: radial-gradient(ellipse at center, var(--accent-purple-soft), transparent 70%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.instrument-section-bg { background: linear-gradient(135deg, rgba(22, 17, 33, 0.8) 0%, rgba(13, 10, 20, 0.95) 100%); }
+.team-photo-section-bg { background: linear-gradient(135deg, rgba(27, 20, 42, 0.85) 0%, rgba(15, 11, 24, 0.95) 100%); }
+.team-members-section-bg { background: linear-gradient(135deg, rgba(17, 13, 27, 0.9) 0%, rgba(11, 7, 18, 0.98) 100%); }
+.visualizer-section-bg { background: linear-gradient(135deg, rgba(14, 10, 26, 0.95) 0%, rgba(8, 5, 14, 0.99) 100%); border-top: 3px solid var(--accent-green); }
+.setlist-section-bg { background: linear-gradient(135deg, rgba(24, 15, 40, 0.85) 0%, rgba(11, 7, 19, 0.98) 100%); border-left: 3px solid var(--accent-purple); }
+.performance-section-bg { background: linear-gradient(135deg, rgba(24, 15, 40, 0.88) 0%, rgba(10, 7, 18, 0.97) 100%); border-top: 3px solid var(--accent-green); overflow: hidden; }
 
 .section-header-block { text-align: center; margin-bottom: 3rem; }
 .section-main-title {
   font-size: clamp(2rem, 3.5vw, 3rem);
   font-weight: 700;
   letter-spacing: 3px;
-  color: #34ff25;
+  color: var(--accent-green);
   margin: 0 0 0.75rem 0;
-  text-shadow: 0 0 15px rgba(52, 255, 37, 0.4);
+  text-shadow: 0 0 15px rgba(56, 232, 58, 0.32);
   text-transform: uppercase;
 }
-.section-subtitle { font-size: clamp(1rem, 1.2vw, 1.25rem); color: #bfaee3; margin: 0; letter-spacing: 1px; }
+.section-subtitle { font-size: clamp(1rem, 1.2vw, 1.25rem); color: var(--text-lavender); margin: 0; letter-spacing: 1px; }
 
 /* =========================================
    REACTIVE / MOTION SYSTEM
@@ -102,32 +224,32 @@ body {
 
 .solid-bg-rect {
   position: absolute; top: 0; bottom: 0; left: 0; right: 0;
-  background-color: #0b0716; 
-  border: 1px solid rgba(91, 61, 199, 0.3);
+  background-color: var(--deep-panel); 
+  border: 1px solid rgba(106, 77, 224, 0.28);
   border-radius: 20px; 
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), inset 0 0 30px rgba(91, 61, 199, 0.15);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), inset 0 0 30px rgba(106, 77, 224, 0.14);
   z-index: 1;           
 }
 
 .logo-border {
   --gx: 50%; --gy: 50%; position: relative; z-index: 2;         
-  border: 2px solid #6b46ef; background-color: rgba(15, 11, 26, 0.75); 
+  border: 2px solid var(--accent-purple); background-color: var(--panel-bg); 
   padding: clamp(3rem, 6vw, 6rem) clamp(2rem, 8vw, 8rem);                 
-  border-radius: 16px; box-shadow: 0 0 30px rgba(107, 70, 239, 0.3), 0 0 15px rgba(52, 255, 37, 0.25); 
+  border-radius: 16px; box-shadow: 0 0 26px rgba(106, 77, 224, 0.26), 0 0 14px rgba(56, 232, 58, 0.2); 
   display: inline-block; margin: 1rem; overflow: hidden;
 }
 
 .logo-border::before {
   content: ''; position: absolute; inset: 0;
-  background: radial-gradient(circle 260px at var(--gx) var(--gy), rgba(52, 255, 37, 0.16), transparent 70%);
+  background: radial-gradient(circle 260px at var(--gx) var(--gy), rgba(56, 232, 58, 0.13), transparent 70%);
   opacity: 0; transition: opacity 0.4s ease; pointer-events: none;
 }
 .logo-border:hover::before { opacity: 1; }
 
 .hero-content { display: flex; align-items: center; justify-content: center; gap: clamp(2rem, 4vw, 4rem); flex-wrap: wrap; }
-.logo-graphic { width: 100%; max-width: clamp(120px, 18vw, 220px); height: auto; filter: drop-shadow(0 0 12px rgba(52, 255, 37, 0.4)); }
-.slash-divider { font-size: clamp(3rem, 7vw, 7rem); font-weight: 300; color: #34ff25; line-height: 1; text-shadow: 0 0 15px rgba(52, 255, 37, 0.6); }
-.band-text { display: block; font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 700; letter-spacing: 5px; color: #ffffff; text-shadow: 0 0 15px rgba(157, 94, 206, 0.7); }
+.logo-graphic { width: 100%; max-width: clamp(120px, 18vw, 220px); height: auto; filter: drop-shadow(0 0 12px rgba(56, 232, 58, 0.35)); }
+.slash-divider { font-size: clamp(3rem, 7vw, 7rem); font-weight: 300; color: var(--accent-green); line-height: 1; text-shadow: 0 0 14px rgba(56, 232, 58, 0.45); }
+.band-text { display: block; font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 700; letter-spacing: 5px; color: #ffffff; text-shadow: 0 0 13px rgba(161, 114, 214, 0.55); }
 
 /* =========================================
    2. INSTRUMENT & SETLIST SECTIONS
@@ -156,18 +278,23 @@ body {
 
 .track-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .track-number { font-family: monospace; color: #9d5ece; font-size: 0.9rem; letter-spacing: 1px; }
-.track-type-badge { font-size: 0.75rem; background: rgba(52, 255, 37, 0.15); color: #34ff25; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; font-weight: 700; }
+.track-type-badge { font-size: 0.75rem; background: rgba(56, 232, 58, 0.13); color: var(--accent-green); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; font-weight: 700; }
 .track-title { font-size: 1.3rem; font-weight: 700; color: #ffffff; margin: 0 0 0.5rem 0; }
-.track-duration { font-size: 0.9rem; color: #bfaee3; margin-bottom: 1.2rem; }
+.track-duration { font-size: 0.9rem; color: var(--text-lavender); margin-bottom: 1.2rem; }
 .audio-player-mock { width: 100%; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; position: relative; }
-.audio-progress-bar { width: 35%; height: 100%; background: #34ff25; box-shadow: 0 0 8px rgba(52, 255, 37, 0.8); }
+.audio-progress-bar { width: 35%; height: 100%; background: var(--accent-green); box-shadow: 0 0 7px rgba(56, 232, 58, 0.65); }
 
 /* =========================================
    3. TEAM SECTION (Photo + Collective)
 ========================================= */
 
-.team-photo-container { width: 100%; border-radius: 14px; overflow: hidden; border: 2px solid rgba(107, 70, 239, 0.4); box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6); }
-.team-photo-img { width: 100%; height: auto; max-height: 500px; object-fit: cover; display: block; }
+.team-photo-container { position: relative; width: 100%; border-radius: 14px; overflow: hidden; border: 2px solid rgba(106, 77, 224, 0.35); box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6); }
+.team-photo-img { width: 100%; height: auto; max-height: 500px; object-fit: cover; display: block; transition: transform 0.6s ease; }
+.team-photo-container:hover .team-photo-img { transform: scale(1.04); }
+.team-photo-container::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, transparent 55%, rgba(6, 4, 12, 0.6) 100%);
+}
 
 .member-card {
   --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%; position: relative; border-radius: 16px; overflow: hidden; 
@@ -183,29 +310,29 @@ body {
 .member-card-info { position: absolute; left: 0; right: 0; bottom: 0; padding: 1.5rem; text-align: left; transform: translateY(14px); transition: transform 0.35s ease; }
 .member-card:hover .member-card-info { transform: translateY(0); }
 .member-name { font-size: 1.4rem; font-weight: 700; color: #ffffff; margin: 0 0 0.25rem 0; letter-spacing: 1px; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8); }
-.member-role { display: inline-block; font-size: 0.8rem; font-weight: 700; color: #05030a; background: #34ff25; padding: 3px 10px; border-radius: 4px; margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 1px; }
+.member-role { display: inline-block; font-size: 0.8rem; font-weight: 700; color: #05030a; background: var(--accent-green); padding: 3px 10px; border-radius: 4px; margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 1px; }
 
 /* =========================================
    4. VISUALIZER COMMAND CENTER
 ========================================= */
 
 .visualizer-dashboard {
-  display: flex; flex-direction: column; gap: 3.5rem; padding: 3rem; background-color: #05030a;
-  border-radius: 12px; border: 1px solid rgba(107, 70, 239, 0.4); box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.9);
+  display: flex; flex-direction: column; gap: 3.5rem; padding: 3rem; background-color: var(--deep-panel);
+  border-radius: 12px; border: 1px solid rgba(106, 77, 224, 0.35); box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.85);
   position: relative; overflow: hidden !important; 
   -webkit-mask-image: -webkit-radial-gradient(white, black);
   mask-image: radial-gradient(white, black);
 }
 
-.status-live { color: #34ff25; }
+.status-live { color: var(--accent-green); }
 .status-down { color: #ff3434; }
 
 .connect-btn {
-  margin-top: 10px; padding: 10px 24px; background-color: #6b46ef; color: #fff;
-  border: 1px solid rgba(52, 255, 37, 0.4); cursor: pointer; border-radius: 4px;
+  margin-top: 10px; padding: 10px 24px; background-color: var(--accent-purple); color: #fff;
+  border: 1px solid rgba(56, 232, 58, 0.35); cursor: pointer; border-radius: 4px;
   font-weight: 700; letter-spacing: 1px; font-family: inherit; transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
-.connect-btn:hover { background-color: #7d59f5; box-shadow: 0 0 20px rgba(107, 70, 239, 0.6); transform: translateY(-2px); }
+.connect-btn:hover { background-color: #7a5eea; box-shadow: 0 0 18px rgba(106, 77, 224, 0.5); transform: translateY(-2px); }
 
 /* Core stage & Reactive Ambient Effects */
 .core-stage { display: flex; justify-content: center; align-items: center; position: relative; z-index: 1; width: 100%; }
@@ -394,11 +521,11 @@ body {
 
 .white-key::after, .black-key::after {
   content: ''; position: absolute; inset: -16px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(52, 255, 37, 0.55) 0%, rgba(52, 255, 37, 0) 72%);
+  background: radial-gradient(circle, rgba(56, 232, 58, 0.48) 0%, rgba(56, 232, 58, 0) 72%);
   opacity: 0; transform: scale(0.6); transition: opacity 0.15s ease-out, transform 0.15s ease-out; pointer-events: none; z-index: -1;
 }
 
-.key-active { background-color: #34ff25 !important; color: #000 !important; box-shadow: 0 0 25px rgba(52, 255, 37, 0.9) !important; transform: translateY(3px); }
+.key-active { background-color: var(--accent-green) !important; color: #000 !important; box-shadow: 0 0 22px rgba(56, 232, 58, 0.8) !important; transform: translateY(3px); }
 .key-active::after { opacity: 1; transform: scale(1.2); }
 
 /* =========================================
@@ -469,17 +596,17 @@ body {
 .modal-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(6, 4, 12, 0.85); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; padding: 1.5rem; pointer-events: auto; }
 .modal-open { animation: modal-bg-in 0.4s ease-out forwards; }
 .modal-closing { animation: modal-bg-out 0.3s ease-in forwards; pointer-events: none; }
-.modal-container { position: relative; background: rgba(15, 11, 26, 0.98); border: 1px solid rgba(107, 70, 239, 0.5); border-radius: 16px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.95), 0 0 40px rgba(107, 70, 239, 0.25); width: 100%; max-width: 1000px; max-height: 90vh; overflow-y: auto; padding: 3rem; }
+.modal-container { position: relative; background: rgba(18, 14, 30, 0.98); border: 1px solid rgba(106, 77, 224, 0.42); border-radius: 16px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.9), 0 0 34px rgba(106, 77, 224, 0.2); width: 100%; max-width: 1000px; max-height: 90vh; overflow-y: auto; padding: 3rem; }
 .modal-container::-webkit-scrollbar { width: 8px; }
 .modal-container::-webkit-scrollbar-track { background: transparent; }
-.modal-container::-webkit-scrollbar-thumb { background: rgba(107, 70, 239, 0.5); border-radius: 4px; }
+.modal-container::-webkit-scrollbar-thumb { background: rgba(106, 77, 224, 0.45); border-radius: 4px; }
 .modal-open .modal-container { animation: modal-content-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .modal-closing .modal-container { animation: modal-content-out 0.3s ease-in forwards; }
 
-.modal-close-btn { position: absolute; top: 1.5rem; right: 1.5rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #bfaee3; font-size: 1.5rem; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; z-index: 10; }
-.modal-close-btn:hover { background: rgba(52, 255, 37, 0.15); color: #34ff25; border-color: #34ff25; transform: scale(1.1); }
-.modal-title { font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 700; color: #ffffff; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 10px rgba(157, 94, 206, 0.5); margin-top: 0; margin-bottom: 1.5rem; text-align: center; }
-.modal-divider { width: 100%; height: 1px; background: linear-gradient(90deg, #6b46ef, transparent); margin: 1.5rem 0; }
+.modal-close-btn { position: absolute; top: 1.5rem; right: 1.5rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-lavender); font-size: 1.5rem; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; z-index: 10; }
+.modal-close-btn:hover { background: rgba(56, 232, 58, 0.13); color: var(--accent-green); border-color: var(--accent-green); transform: scale(1.1); }
+.modal-title { font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 700; color: #ffffff; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 9px rgba(161, 114, 214, 0.42); margin-top: 0; margin-bottom: 1.5rem; text-align: center; }
+.modal-divider { width: 100%; height: 1px; background: linear-gradient(90deg, var(--accent-purple), transparent); margin: 1.5rem 0; }
 
 @keyframes modal-bg-in { 0% { opacity: 0; backdrop-filter: blur(0px); } 100% { opacity: 1; backdrop-filter: blur(12px); } }
 @keyframes modal-bg-out { 0% { opacity: 1; backdrop-filter: blur(12px); } 100% { opacity: 0; backdrop-filter: blur(0px); } }
@@ -518,3 +645,128 @@ body {
 .member-modal-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
 .modal-bio-text { font-size: 1.1rem; color: #c4bcdc; line-height: 1.7; }
 @media (max-width: 768px) { .member-modal-layout { flex-direction: column; align-items: center; text-align: center; gap: 2rem; } .member-modal-photo { width: 100%; max-width: 280px; } .member-modal-info { align-items: center; } .modal-title { text-align: center !important; } }
+/* =========================================
+   5. LIVE PERFORMANCE / TOUR SECTION
+========================================= */
+
+.marquee-strip {
+  width: calc(100% + clamp(4rem, 10vw, 12rem));
+  margin: -1rem clamp(-2rem, -5vw, -6rem) 2.5rem;
+  overflow: hidden;
+  border-top: 1px solid rgba(106, 77, 224, 0.25);
+  border-bottom: 1px solid rgba(106, 77, 224, 0.25);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  white-space: nowrap;
+  padding: 0.6rem 0;
+  animation: marquee-scroll 22s linear infinite;
+  font-family: monospace;
+  font-size: 0.95rem;
+  letter-spacing: 3px;
+  color: var(--accent-green);
+  text-shadow: 0 0 8px rgba(56, 232, 58, 0.4);
+  text-transform: uppercase;
+}
+
+.marquee-track span { padding-right: 1ch; }
+
+@keyframes marquee-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+}
+
+.tour-date-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.tour-date-card {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(106, 77, 224, 0.25);
+  border-radius: 10px;
+  padding: 1.5rem clamp(1.25rem, 3vw, 2.5rem);
+  transition: transform 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
+}
+
+.reveal.is-visible .tour-date-card {
+  animation: card-rise 0.7s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+}
+.reveal.is-visible .tour-date-card:nth-child(1) { animation-delay: 0.05s; }
+.reveal.is-visible .tour-date-card:nth-child(2) { animation-delay: 0.15s; }
+.reveal.is-visible .tour-date-card:nth-child(3) { animation-delay: 0.25s; }
+
+.tour-date-card:hover {
+  transform: translateX(6px);
+  border-color: var(--accent-green);
+  background: rgba(56, 232, 58, 0.04);
+}
+
+.tour-date-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 0.5rem 0.75rem;
+  border-right: 1px solid rgba(106, 77, 224, 0.3);
+}
+
+.tour-date-day { font-size: 1.6rem; font-weight: 700; color: #ffffff; line-height: 1; }
+.tour-date-month { font-size: 0.75rem; letter-spacing: 2px; color: var(--accent-purple-text); margin-top: 4px; }
+
+.tour-date-info { flex: 1; min-width: 0; }
+.tour-event-name { font-size: 1.25rem; font-weight: 700; color: #ffffff; margin: 0 0 0.3rem 0; letter-spacing: 0.5px; }
+.tour-venue { font-size: 0.95rem; color: var(--text-lavender); margin: 0; }
+
+.tour-date-action { display: flex; flex-direction: column; align-items: flex-end; gap: 0.6rem; }
+
+.tour-status-badge {
+  font-size: 0.7rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent-green);
+  background: rgba(56, 232, 58, 0.12);
+  padding: 3px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.tour-cta-btn {
+  padding: 8px 20px;
+  background: transparent;
+  color: var(--accent-green);
+  border: 1px solid var(--accent-green);
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.tour-cta-btn:hover {
+  background: var(--accent-green);
+  color: #05030a;
+  box-shadow: 0 0 16px rgba(56, 232, 58, 0.45);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 700px) {
+  .tour-date-card { flex-wrap: wrap; gap: 1rem; }
+  .tour-date-block { border-right: none; align-items: flex-start; min-width: 0; }
+  .tour-date-action { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
+}
