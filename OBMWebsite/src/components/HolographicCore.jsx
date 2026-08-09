@@ -1,61 +1,96 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Octahedron, Torus } from '@react-three/drei';
+import * as THREE from 'three';
 
-export default function HolographicCore({ frequency = 0, isActive = false }) {
-  const outerRef = useRef();
-  const innerRef = useRef();
+const IDLE_COLOR = new THREE.Color('#6b46ef');
+const ACTIVE_COLOR = new THREE.Color('#34ff25');
 
-  // useFrame runs on every animation frame to continuously rotate the meshes
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
-    
-    let outerSpeedY = 0.5;
-    let outerSpeedZ = 0.2;
-    let innerSpeed = 0.8;
+export default function HolographicCore({ frequency = 0, velocity = 0, isActive = false }) {
+  const coreRef = useRef();
+  const shellRef = useRef();
+  const ringARef = useRef();
+  const ringBRef = useRef();
+  const coreMatRef = useRef();
+  const shellMatRef = useRef();
+  const liveColor = useRef(IDLE_COLOR.clone());
 
-    // React to the hardware frequency
+  useFrame((state, delta) => {
+    const t = state.clock.getElapsedTime();
+    const amp = isActive ? Math.min(1, (velocity || 64) / 127) : 0;
+
+    // Base rotation speeds up with input energy
+    const spin = 0.4 + amp * 1.1;
+    coreRef.current.rotation.y += spin * delta;
+    coreRef.current.rotation.x += spin * 0.5 * delta;
+
+    // Wireframe glow shell counter-rotates for a layered, energized look
+    if (shellRef.current) {
+      shellRef.current.rotation.y -= spin * 0.35 * delta;
+      shellRef.current.rotation.x -= spin * 0.2 * delta;
+    }
+
+    // Halo rings spin independently, like a rotating targeting array
+    if (ringARef.current) ringARef.current.rotation.z += (0.3 + amp * 0.7) * delta;
+    if (ringBRef.current) ringBRef.current.rotation.x += (0.25 + amp * 0.55) * delta;
+
+    // Pulse scale driven directly by the incoming frequency/velocity
     if (isActive) {
-      outerSpeedY += (frequency / 100);
-      innerSpeed += (frequency / 80);
+      const pulse = 1 + Math.sin(t * 14) * (frequency / 2200) * (0.5 + amp * 0.5);
+      coreRef.current.scale.setScalar(
+        THREE.MathUtils.lerp(coreRef.current.scale.x, pulse, 0.3)
+      );
+      if (shellRef.current) {
+        shellRef.current.scale.setScalar(
+          THREE.MathUtils.lerp(shellRef.current.scale.x, 1.55 + amp * 0.3, 0.15)
+        );
+      }
+    } else {
+      coreRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.08);
+      if (shellRef.current) shellRef.current.scale.lerp(new THREE.Vector3(1.5, 1.5, 1.5), 0.08);
     }
 
-    if (outerRef.current) {
-      outerRef.current.rotation.y = t * outerSpeedY;
-      outerRef.current.rotation.z = t * outerSpeedZ;
-      const scale = isActive ? 1 + Math.sin(t * 15) * 0.1 : 1;
-      outerRef.current.scale.set(scale, scale, scale);
+    // Smoothly cross-fade color instead of snapping idle -> active
+    const target = isActive ? ACTIVE_COLOR : IDLE_COLOR;
+    liveColor.current.lerp(target, 0.06);
+
+    if (coreMatRef.current) {
+      coreMatRef.current.color.copy(liveColor.current);
+      coreMatRef.current.emissive.copy(liveColor.current);
+      coreMatRef.current.emissiveIntensity = isActive ? 1.1 + amp * 0.7 : 0.35;
     }
-    if (innerRef.current) {
-      innerRef.current.rotation.y = -t * innerSpeed;
-      innerRef.current.rotation.x = -t * 0.5; 
-      const scale = isActive ? 1 + Math.sin(t * 15) * 0.1 : 1;
-      innerRef.current.scale.set(scale, scale, scale);
+    if (shellMatRef.current) {
+      shellMatRef.current.color.copy(liveColor.current);
+      shellMatRef.current.opacity = isActive ? 0.32 + amp * 0.28 : 0.14;
     }
   });
 
   return (
     <group>
-      {/* Outer Neon Green Wireframe Diamond */}
-      <mesh ref={outerRef}>
-        <octahedronGeometry args={[1.8, 0]} />
-        <meshStandardMaterial 
-          color={isActive ? "#00ffff" : "#34ff25"} 
-          wireframe={true} 
-          emissive={isActive ? "#00ffff" : "#34ff25"} 
-          emissiveIntensity={isActive ? 2.0 : 0.5} 
+      {/* Core pyramidal diamond, Ramiel-style bipyramid silhouette */}
+      <Octahedron ref={coreRef} args={[1, 0]}>
+        <meshStandardMaterial
+          ref={coreMatRef}
+          color={IDLE_COLOR}
+          emissive={IDLE_COLOR}
+          emissiveIntensity={0.35}
+          metalness={0.85}
+          roughness={0.15}
         />
-      </mesh>
-      
-      {/* Inner Neon Purple Diamond */}
-      <mesh ref={innerRef}>
-        <octahedronGeometry args={[1, 0]} />
-        <meshStandardMaterial 
-          color="#6b46ef" 
-          wireframe={true} 
-          emissive="#6b46ef" 
-          emissiveIntensity={isActive ? 2.0 : 0.8} 
-        />
-      </mesh>
+      </Octahedron>
+
+      {/* Wireframe glow shell for a layered energy-field look */}
+      <Octahedron ref={shellRef} args={[1, 0]} scale={1.5}>
+        <meshBasicMaterial ref={shellMatRef} color={IDLE_COLOR} wireframe transparent opacity={0.14} />
+      </Octahedron>
+
+      {/* Rotating halo rings */}
+      <Torus ref={ringARef} args={[1.9, 0.008, 8, 64]} rotation={[Math.PI / 2.4, 0, 0]}>
+        <meshBasicMaterial color="#9d5ece" transparent opacity={0.5} />
+      </Torus>
+      <Torus ref={ringBRef} args={[2.15, 0.006, 8, 64]} rotation={[0, 0, Math.PI / 3]}>
+        <meshBasicMaterial color="#34ff25" transparent opacity={0.35} />
+      </Torus>
     </group>
   );
 }
