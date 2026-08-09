@@ -13,6 +13,7 @@ import analogio
 import adafruit_matrixkeypad
 import adafruit_displayio_ssd1306
 from tracks import track_1_chords, track_1_bass, track_1_name, track_1_tempo
+from tracks import track_2_chords, track_2_bass, track_2_name, track_2_tempo
 from adafruit_display_text.bitmap_label import Label
 from terminalio import FONT
 
@@ -171,6 +172,20 @@ std_env = synthio.Envelope(
                             sustain_level=0.7,
                             release_time=0.2
 )
+
+std_env_short = synthio.Envelope(
+                            attack_time=0.1,
+                            decay_time=0.3,
+                            sustain_level=0.4,
+                            release_time=0.2
+)
+
+std_env_quick = synthio.Envelope(
+                            attack_time=0.05,
+                            decay_time=0.1,
+                            sustain_level=0.7,
+                            release_time=0.1
+)
 # number of playable synths and backing synths
 num_synths = 3
 num_backsynths = 2
@@ -208,15 +223,15 @@ mixer = audiomixer.Mixer(voice_count=num_synths+num_backsynths, channel_count=1,
 
 # 0: sawtooth, 1: square, 2: triangle
 synths = [synthio.Synthesizer(channel_count=1, sample_rate=global_sample_rate, envelope=std_env, waveform=saw_wave),
-          synthio.Synthesizer(channel_count=1, sample_rate=global_sample_rate, envelope=std_env, waveform=pulse_wave),
+          synthio.Synthesizer(channel_count=1, sample_rate=global_sample_rate, envelope=std_env_quick, waveform=pulse_wave),
           synthio.Synthesizer(channel_count=1, sample_rate=global_sample_rate, envelope=std_env, waveform=tri_wave)]
 
 
 backSynths = [
 # bass
-                synthio.Synthesizer(channel_count=1, sample_rate=global_sample_rate, envelope=std_env, waveform=pulse_wave),
+                synthio.Synthesizer(channel_count=1, sample_rate=global_sample_rate, envelope=std_env_quick, waveform=pulse_wave),
 # chords
-                synthio.Synthesizer(channel_count=1, sample_rate=global_sample_rate, envelope=std_env, waveform=tri_wave)]
+                synthio.Synthesizer(channel_count=1, sample_rate=global_sample_rate, envelope=std_env_short, waveform=tri_wave)]
 
 
 # modulate the synth volume with our lfo
@@ -225,7 +240,7 @@ lfo_tremolo = synthio.LFO(rate=4, scale=0.1, offset=0.9)
 # volume at startup
 initial_volume = 0.6
 # volume of background track relative to the lead
-back_volume_mult = 0.7
+back_volume_mult = 0.8
 
 audio.play(mixer)
 for i in range(num_synths):
@@ -411,8 +426,30 @@ def play_loop():
 
             elif matrix_input[0] == btn_track1:
                 paused = False
+                current_eighth = -1
+                current_bar = 0
+                last_eighth_time = -1000000.0
+                for synth in backSynths:
+                    synth.release_all()
+                selected_chords = track_1_chords()
+                selected_bass = track_1_bass()
+                selected_track = track_1_name()
+                BPS = track_1_tempo() / 60
+                sec_per_eighth = 1.0 / (BPS * 2)
+                
             elif matrix_input[0] == btn_track2:
                 paused = False
+                current_eighth = -1
+                current_bar = 0
+                last_eighth_time = -1000000.0
+                for synth in backSynths:
+                    synth.release_all()
+                selected_chords = track_2_chords()
+                selected_bass = track_2_bass()
+                selected_track = track_2_name()
+                BPS = track_2_tempo() / 60
+                sec_per_eighth = 1.0 / (BPS * 2)
+                
             elif matrix_input[0] == btn_track3:
                 paused = False
             elif matrix_input[0] == btn_stop:
