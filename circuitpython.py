@@ -1,4 +1,5 @@
 import time
+import array
 import board
 import busio
 import displayio
@@ -11,7 +12,7 @@ import audiobusio
 import analogio
 import adafruit_matrixkeypad
 import adafruit_displayio_ssd1306
-import tracks
+from tracks import track_1_chords, track_1_bass, track_1_name, track_1_tempo
 from adafruit_display_text.bitmap_label import Label
 from terminalio import FONT
 
@@ -40,11 +41,18 @@ btn_synth0 = 1
 btn_synth1 = 2
 btn_synth2 = 3
 
+btn_track1 = 4
+btn_track2 = 5
+btn_track3 = 6
+
 btn_volUp = 7
 btn_volDown = '*'
 
 btn_octUp = 9
 btn_octDown = '#'
+
+btn_pause = 0
+btn_stop = 8
 
 
 
@@ -185,7 +193,7 @@ std_env = synthio.Envelope(
                             sustain_level=0.7,
                             release_time=0.2
 )
-# number pf playable synths
+# number of playable synths
 num_synths = 3
 num_backsynths = 2
 
@@ -197,6 +205,13 @@ raw_sine = np.sin(np.linspace(0, 2 * np.pi, length, endpoint=False))
 sine_wave = np.array(raw_sine * 32767, dtype=np.int16)
 
 
+pulse_duty = 0.10
+pulse_wave = array.array('h')
+for i in range(length):
+  if i < (length * pulse_duty):
+    pulse_wave.append(32767)  # High peak
+  else:
+    pulse_wave.append(-32768)  # Low peak
 
 # 2. Sawtooth Wave (Ramps linearly from -32767 to 32767)
 saw_wave = np.array(np.linspace(-32767, 32767, length, endpoint=False), dtype=np.int16)
@@ -215,32 +230,31 @@ mixer = audiomixer.Mixer(voice_count=num_synths+num_backsynths, channel_count=1,
 
 # 0: sawtooth, 1: square, 2: triangle
 synths = [synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=saw_wave),
-          synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env),
+          synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=pulse_wave),
           synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=tri_wave)]
 
-backSynths = [synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=tri_wave),
+backSynths = [synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=pulse_wave),
               synthio.Synthesizer(channel_count=1, sample_rate=22050, envelope=std_env, waveform=saw_wave)]
 
 
 lfo_tremolo = synthio.LFO(rate=2, scale=0.1, offset=0.9)
 
+initial_volume = 0.8
 audio.play(mixer)
 for i in range(num_synths):
     mixer.voice[i].play(synths[i])
-    mixer.voice[i].level = 0.8
+    mixer.voice[i].level = initial_volume
 
 for i in range(num_backsynths):
     mixer.voice[i + num_synths].play(backSynths[i])
-    mixer.voice[i + num_synths].level = 0.6
+    mixer.voice[i + num_synths].level = 0.8 * initial_volume
 
-
-### TODO IMPLIMENT PLAYBACK OF TRACKS USING BACKSYNTHS
 
 def play_loop():
     # 0: sawtooth, 1: square, 2: triangle
     clock = 0
     active_synth = 0
-    synth_names = ["Sawtooth", "Square", "Triangle"]
+    synth_names = ["Saw", "Pulse", "Tri"]
     active_synth_name = synth_names[active_synth]
     volume = 0.8
     octave = 0
@@ -248,16 +262,30 @@ def play_loop():
     # 1 / BPS = seconds per beat
     BPS = 120 / 60
     sec_per_eighth = 1.0 / (BPS * 2)
-    current_eighth = 0
+    current_eighth = -1
     current_bar = 0
     
-    last_eighth_time = 0
+    last_eighth_time = -1000000.0
     
     vol_up_pressed = 0
     vol_down_pressed = 0
     
     oct_up_pressed = 0
     oct_down_pressed = 0
+    
+    pause_pressed = 0
+    
+    paused = True
+    disp_metr_label.text = f"PLAYBACK STOPPED"
+    
+    
+    selected_chords = track_1_chords()
+    selected_bass = track_1_bass()
+    selected_track = track_1_name()
+    
+    BPS = track_1_tempo() / 60
+    sec_per_eighth = 1.0 / (BPS * 2)
+    
     
     lfo_tremolo.offset = volume
     for i in range(num_synths):
@@ -269,28 +297,72 @@ def play_loop():
         # run every 10 ticks
         if (clock % 10 == 0):
             
-            print(get_modulation())
-            
+            # manage display
             active_synth_name = synth_names[active_synth]
             
             disp_synth_label.text = f"Active Sound: {active_synth_name}"
-            disp_track_label.text = f"Track: {0}%"
+            disp_track_label.text = f"Track: {selected_track}"
             disp_volume_label.text = f"Volume: {round(volume * 100) + 10}%"
             disp_octave_label.text = f"Octave: +{octave}" if (octave > 0) else f"Octave: {octave}"
             disp_mod_label.text = f"Modulation: {round((get_modulation() / modulator_multiplier) * 100)}%"
-            
+                
         
-        
+        # manage backing track playback
         if (time.monotonic() >= last_eighth_time + sec_per_eighth):
-            current_eighth += 1
-            if current_eighth > 8:
-                current_eighth = 0
-                current_bar += 1
+            if not paused:
+                last_eighth_time = time.monotonic()
+                current_eighth += 1
+                
+                if current_eighth > 7:
+                    current_eighth = 0
+                    current_bar += 1
+                if current_bar * 8 >= len(selected_bass):
+                    current_bar = 0
+                    current_eighth = 0
+                    
+                
+                # bass
+                print((8 * current_bar) + current_eighth)
+                for note in range(len(selected_bass[(8 * current_bar) + current_eighth])):
+                    
+                    if selected_bass[(8 * current_bar) + current_eighth][note] == 0:
+                        if (8 * current_bar) + current_eighth == 0:
+                            backSynths[0].release(note + 48)
+                            print(f"off      {current_bar}    {current_eighth}   {note}")
+                        elif selected_bass[((8 * current_bar) + current_eighth) - 1][note] == 1:
+                            backSynths[0].release(note + 48)
+                            print(f"off      {current_bar}    {current_eighth}   {note}") 
+                    
+                    if selected_bass[(8 * current_bar) + current_eighth][note] == 1:
+                        if (8 * current_bar) + current_eighth == 0:
+                            backSynths[0].press(note + 48)
+                            print(f"on      {current_bar}    {current_eighth}   {note}")
+                        elif selected_bass[((8 * current_bar) + current_eighth) - 1][note] == 0:
+                            backSynths[0].press(note + 48)
+                            print(f"on      {current_bar}    {current_eighth}   {note}")
+
+
+                # chords
+
+
+                
+
+                    
+                if (current_eighth == 0 or current_eighth == 1):
+                    disp_metr_label.text = f"bar {current_bar} 1"
+                elif (current_eighth == 2 or current_eighth == 3):
+                    disp_metr_label.text = f"bar {current_bar}  2"
+                elif (current_eighth == 4 or current_eighth == 5):
+                    disp_metr_label.text = f"bar {current_bar}   3"            
+                elif (current_eighth == 6 or current_eighth == 7):
+                    disp_metr_label.text = f"bar {current_bar}    4"
+                
             
         
         lfo_tremolo.scale = -get_modulation()
         
         
+        # handle matrix keypad
         matrix_input = keypad.pressed_keys
         if matrix_input:
             
@@ -311,6 +383,10 @@ def play_loop():
                 oct_down_pressed += 1
             else:
                 oct_down_pressed = 0
+            if matrix_input[0] == btn_pause:
+                pause_pressed += 1
+            else:
+                pause_pressed = 0
                 
             
             if matrix_input[0] == btn_synth0:
@@ -322,12 +398,30 @@ def play_loop():
             elif matrix_input[0] == btn_synth2:
                 synths[active_synth].release_all()
                 active_synth = 2
+                
+            elif matrix_input[0] == btn_track1:
+                paused = False
+            elif matrix_input[0] == btn_track2:
+                paused = False
+            elif matrix_input[0] == btn_track3:
+                paused = False
+            elif matrix_input[0] == btn_stop:
+                # pause and reset everything
+                paused = True
+                current_eighth = -1
+                current_bar = 0
+                last_eighth_time = -1000000.0
+                for synth in backSynths:
+                    synth.release_all()
+                disp_metr_label.text = f"PLAYBACK STOPPED"
+                
 
         else:
             vol_up_pressed = 0
             vol_down_pressed = 0
             oct_up_pressed = 0
             oct_down_pressed = 0
+            pause_pressed = 0
             
         
         if vol_up_pressed == 1:
@@ -336,12 +430,16 @@ def play_loop():
             if volume > 0.9:
                 volume = 0.9
             lfo_tremolo.offset = volume
+            for i in range(num_backsynths):
+                mixer.voice[i + num_synths].level = 0.8 * volume
         elif vol_down_pressed == 1:
             print("volume down")
             volume -= 0.1
             if volume < 0.1:
                 volume = 0.1
             lfo_tremolo.offset = volume
+            for i in range(num_backsynths):
+                mixer.voice[i + num_synths].level = 0.8 * volume
 
         if oct_up_pressed == 1:
             print("octave up")
@@ -355,6 +453,14 @@ def play_loop():
             octave -= 1
             if octave < -2:
                 octave = -2
+                
+        if pause_pressed == 1:
+            if paused == False:
+                paused = True
+                for synth in backSynths:
+                    synth.release_all()
+            else:
+                paused = False
         
         keys = read_keys()
         for key in keys:
@@ -365,5 +471,7 @@ def play_loop():
         old_keys.update(keys)
         clock += 1
         time.sleep(0.01)
+        
+
 
 play_loop()
