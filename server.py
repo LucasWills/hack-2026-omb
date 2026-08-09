@@ -12,7 +12,7 @@ async def handle_connection(websocket):
 
 async def main():
     print("WebSocket Server is running on ws://localhost:8080")
-    async with websockets.serve(handle_connection, "localhost", 8080):
+    async with websockets.serve(handle_connection, "0.0.0.0", 8080):
         await asyncio.Future()
 
 if __name__ == "__main__":

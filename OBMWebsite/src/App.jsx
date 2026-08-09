@@ -5,6 +5,7 @@ import PerformanceSection from './components/PerformanceSection';
 import TeamPhotoSection from './components/TeamPhotoSection';
 import TeamMembersSection from './components/TeamMembersSection';
 import VisualizerSection from './components/VisualizerSection';
+import WebSocketPanel from "./WebSocketPanel";
 
 export default function App() {
   return (
@@ -24,6 +25,8 @@ export default function App() {
           <TeamPhotoSection />
           <TeamMembersSection />
           <VisualizerSection />
+          <WebSocketPanel />
+
         </div>
       </div>
     </div>
