@@ -22,10 +22,8 @@ export default function HeroHeader() {
     node.style.setProperty('--gy', `${gy}%`);
   };
 
-  // Calculate dynamic styles for the curtain effect
-  // Fades out completely after 600px of scroll
+  // Calculate dynamic styles for the curtain effect (fades out completely after 600px of scroll)
   const fadeOpacity = Math.max(1 - scrollY / 600, 0);
-  // Zooms out very slightly to push the hero deep into the background
   const fadeScale = Math.max(1 - scrollY / 4000, 0.92);
 
   return (
@@ -36,17 +34,30 @@ export default function HeroHeader() {
       <div className="inner-card-wrapper hero-intro">
         <div className="solid-bg-rect"></div>
         <div className="logo-border" ref={borderRef} onMouseMove={handleMove}>
-          <div className="hero-content">
-            <img
-              src={logo}
-              alt="One Man Band Logo"
-              className="logo-graphic"
-            />
-            <div className="slash-divider">/</div>
-            <div className="band-text-group">
-              <span className="band-text">ONE MAN BAND</span>
+          
+          {/* New Diagonal Layout Wrapper */}
+          <div className="hero-content diagonal-layout">
+            
+            <div className="hero-logo-cell">
+              <img
+                src={logo}
+                alt="One Man Band Logo"
+                className="logo-graphic"
+              />
             </div>
+            
+            <div className="hero-slash-cell">
+              <div className="slash-divider">/</div>
+            </div>
+            
+            <div className="hero-text-cell">
+              <div className="band-text-group">
+                <span className="band-text">ONE MAN BAND</span>
+              </div>
+            </div>
+
           </div>
+
         </div>
       </div>
     </div>

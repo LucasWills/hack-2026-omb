@@ -1,34 +1,39 @@
 import { useRef, useState } from 'react';
 import memberPhotoPlaceholder from '../assets/shinji.jpeg';
+import lucasPhoto from '../assets/Lucas.png';
 import useScrollReveal from './useScrollReveal';
 import Modal from './Modal';
 
-// Data-driven content
+// Data-driven content: Mussie -> Lucas -> Asher
+// colorKey drives each member's signature border/glow color (see member-color-* in styles.css)
 const teamMembers = [
-  {
-    id: 2,
-    name: "Lucas Wills",
-    role: "Yabai",
-    bio: "Placeholder description detailing Lucas's contributions to the collective. Responsible for overseeing the core system architecture and prototyping workflows.",
-    photo: memberPhotoPlaceholder
-  },
   {
     id: 3,
     name: "Mussie Yigzaw",
     role: "Yabai",
     bio: "Placeholder description detailing Mussie's contributions to the collective. Focused on acoustic resonance testing, signal flow, and structural integrity.",
-    photo: memberPhotoPlaceholder
+    photo: memberPhotoPlaceholder,
+    colorKey: "red"
+  },
+  {
+    id: 2,
+    name: "Lucas Wills",
+    role: "Yabai",
+    bio: "Placeholder description detailing Lucas's contributions to the collective. Responsible for overseeing the core system architecture and prototyping workflows.",
+    photo: lucasPhoto,
+    colorKey: "gold"
   },
   {
     id: 1,
     name: "Asher Vicera",
     role: "Yabai",
     bio: "Placeholder description detailing Asher's contributions to the collective. Engineered the live telemetry pipelines, UI development, and data-driven visualizers.",
-    photo: memberPhotoPlaceholder
+    photo: memberPhotoPlaceholder,
+    colorKey: "blue"
   }
 ];
 
-function MemberCard({ member, onClick }) {
+function MemberCard({ member, isRevealed, onClick }) {
   const cardRef = useRef(null);
 
   const handleMove = (e) => {
@@ -54,11 +59,12 @@ function MemberCard({ member, onClick }) {
 
   return (
     <div
-      className="member-card clickable"
+      className={`member-card clickable member-color-${member.colorKey} ${isRevealed ? 'is-revealed' : ''}`}
       ref={cardRef}
       onMouseMove={handleMove}
       onMouseLeave={handleLeave}
       onClick={() => onClick(member)}
+      title={isRevealed ? member.name : 'Click to reveal'}
     >
       <div
         className="member-card-photo"
@@ -66,6 +72,7 @@ function MemberCard({ member, onClick }) {
       />
       <div className="member-card-scrim" />
       <div className="member-card-sheen" />
+      {!isRevealed && <span className="member-reveal-hint">Click to reveal</span>}
       <div className="member-card-info">
         <span className="member-role">{member.role}</span>
         <h3 className="member-name">{member.name}</h3>
@@ -77,8 +84,19 @@ function MemberCard({ member, onClick }) {
 export default function TeamMembersSection() {
   const [ref, isVisible] = useScrollReveal();
   const [selectedMember, setSelectedMember] = useState(null);
+  // Once a member's photo is revealed it stays revealed — no re-blurring on
+  // a second click, which reads cleaner than a toggle.
+  const [revealedIds, setRevealedIds] = useState(() => new Set());
 
-  const openMember = (member) => setSelectedMember(member);
+  const openMember = (member) => {
+    setRevealedIds((prev) => {
+      if (prev.has(member.id)) return prev;
+      const next = new Set(prev);
+      next.add(member.id);
+      return next;
+    });
+    setSelectedMember(member);
+  };
   const closeMember = () => setSelectedMember(null);
 
   return (
@@ -94,7 +112,12 @@ export default function TeamMembersSection() {
 
         <div className="members-grid">
           {teamMembers.map((member) => (
-            <MemberCard member={member} key={member.id} onClick={openMember} />
+            <MemberCard
+              member={member}
+              key={member.id}
+              isRevealed={revealedIds.has(member.id)}
+              onClick={openMember}
+            />
           ))}
         </div>
       </div>
@@ -102,7 +125,11 @@ export default function TeamMembersSection() {
       <Modal isOpen={!!selectedMember} onClose={closeMember}>
         {selectedMember && (
           <div className="member-modal-layout">
-            <img src={selectedMember.photo} alt={selectedMember.name} className="member-modal-photo" />
+            <img
+              src={selectedMember.photo}
+              alt={selectedMember.name}
+              className={`member-modal-photo member-color-${selectedMember.colorKey}`}
+            />
             
             <div className="member-modal-info">
               <span className="member-role" style={{ fontSize: '1rem', padding: '5px 12px' }}>{selectedMember.role}</span>

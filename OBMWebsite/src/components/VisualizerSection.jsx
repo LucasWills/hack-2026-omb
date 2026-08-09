@@ -24,6 +24,20 @@ export default function VisualizerSection() {
   const [hardwareData, setHardwareData] = useState({ pitch: "---", octave: "---", frequency: 0, velocity: 0 });
   const [isConnected, setIsConnected] = useState(false);
   const [isDataFlowing, setIsDataFlowing] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Lock page scroll and allow Escape to exit while in immersive mode
+  useEffect(() => {
+    if (!isExpanded) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleEsc = (e) => { if (e.key === 'Escape') setIsExpanded(false); };
+    window.addEventListener('keydown', handleEsc);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, [isExpanded]);
 
   const dashboardRef = useRef(null);
   const pathRef = useRef(null);
@@ -145,20 +159,43 @@ export default function VisualizerSection() {
       className={`content-section visualizer-section-bg reveal ${isVisible ? 'is-visible' : ''}`}
       ref={ref}
     >
-      <div className="section-header-block">
-        <h2 className="section-main-title">Live Telemetry & Frequency Analyzer</h2>
-        <p className="section-subtitle">
-          Status: {isConnected ? <span className="status-live">LINK ACTIVE (A0 - C8, 88-Key Range)</span> : <span className="status-down">DISCONNECTED</span>}
-        </p>
-
-        {!isConnected && (
-          <button className="connect-btn" onClick={connectToUSB}>
-            CONNECT HARDWARE
+      <div className={isExpanded ? 'visualizer-fullscreen' : 'visualizer-stage-wrapper'}>
+        {isExpanded && (
+          <button
+            className="visualizer-exit-btn"
+            onClick={() => setIsExpanded(false)}
+            aria-label="Exit immersive mode"
+          >
+            ×
           </button>
         )}
-      </div>
 
-      <div className="visualizer-dashboard" ref={dashboardRef}>
+        <div className="section-header-block">
+          <h2 className="section-main-title">Live Telemetry & Frequency Analyzer</h2>
+          <p className="section-subtitle">
+            Status: {isConnected ? <span className="status-live">LINK ACTIVE (A0 - C8, 88-Key Range)</span> : <span className="status-down">DISCONNECTED</span>}
+          </p>
+
+          <div className="visualizer-header-actions">
+            {!isConnected && (
+              <button className="connect-btn" onClick={connectToUSB}>
+                CONNECT HARDWARE
+              </button>
+            )}
+            <button
+              className="visualizer-expand-btn"
+              onClick={() => setIsExpanded((v) => !v)}
+            >
+              {isExpanded ? 'EXIT IMMERSIVE MODE' : 'ENTER IMMERSIVE MODE'}
+            </button>
+          </div>
+        </div>
+
+        <div
+          className={`visualizer-dashboard ${isExpanded ? 'is-immersive' : ''}`}
+          ref={dashboardRef}
+          onClick={() => { if (!isExpanded) setIsExpanded(true); }}
+        >
 
         {/* TOP: Core and frequency-dependent SVG wobble halo */}
         <div className="core-stage">
@@ -331,6 +368,7 @@ export default function VisualizerSection() {
 
         </div>
 
+        </div>
       </div>
     </div>
   );

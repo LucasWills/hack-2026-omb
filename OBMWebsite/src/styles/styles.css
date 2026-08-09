@@ -19,6 +19,17 @@
 
   --text-primary: #f2f0f5;
   --text-lavender: #c3b4e6;
+
+  /* Team-member signature colors (used for the collectible-card reveal system) */
+  --member-red: #ff4141;
+  --member-red-glow: rgba(255, 65, 65, 0.32);
+  --member-red-glow-strong: rgba(255, 65, 65, 0.58);
+  --member-gold: #ffd23f;
+  --member-gold-glow: rgba(255, 210, 63, 0.32);
+  --member-gold-glow-strong: rgba(255, 210, 63, 0.58);
+  --member-blue: #3ad8ff;
+  --member-blue-glow: rgba(58, 216, 255, 0.32);
+  --member-blue-glow-strong: rgba(58, 216, 255, 0.58);
 }
 
 /* =========================================
@@ -110,7 +121,6 @@ body {
 .hero-curtain-container {
   position: sticky;
   top: 0;
-  /* Ensure it takes up exactly the viewport height, and offset the 4vw padding of the wrapper so it centers perfectly in default scale */
   height: 100vh;
   margin-top: -4vw;
   width: 100%;
@@ -125,6 +135,9 @@ body {
 
 .hero-curtain-container .inner-card-wrapper {
   pointer-events: auto; 
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .content-curtain-reveal {
@@ -175,7 +188,14 @@ body {
   background: var(--panel-bg);
   backdrop-filter: blur(12px);
   box-shadow: 0 15px 50px rgba(0, 0, 0, 0.7);
-  position: relative;
+  /* Each section stays pinned briefly as the next one rises over it, extending
+     the hero's curtain-reveal language down through the whole page. */
+  position: sticky;
+  top: clamp(1.25rem, 3.5vw, 2.75rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content-section { position: relative; top: auto; }
 }
 
 .content-section::before {
@@ -190,12 +210,14 @@ body {
   pointer-events: none;
 }
 
-.instrument-section-bg { background: linear-gradient(135deg, rgba(22, 17, 33, 0.8) 0%, rgba(13, 10, 20, 0.95) 100%); }
-.team-photo-section-bg { background: linear-gradient(135deg, rgba(27, 20, 42, 0.85) 0%, rgba(15, 11, 24, 0.95) 100%); }
-.team-members-section-bg { background: linear-gradient(135deg, rgba(17, 13, 27, 0.9) 0%, rgba(11, 7, 18, 0.98) 100%); }
-.visualizer-section-bg { background: linear-gradient(135deg, rgba(14, 10, 26, 0.95) 0%, rgba(8, 5, 14, 0.99) 100%); border-top: 3px solid var(--accent-green); transition: all 0.4s ease; }
-.setlist-section-bg { background: linear-gradient(135deg, rgba(24, 15, 40, 0.85) 0%, rgba(11, 7, 19, 0.98) 100%); border-left: 3px solid var(--accent-purple); }
-.performance-section-bg { background: linear-gradient(135deg, rgba(24, 15, 40, 0.88) 0%, rgba(10, 7, 18, 0.97) 100%); border-top: 3px solid var(--accent-green); overflow: hidden; }
+/* z-index climbs section-by-section down the page so each new panel rises
+   over the one before it instead of just fading in beside it. */
+.instrument-section-bg { background: linear-gradient(135deg, rgba(22, 17, 33, 0.8) 0%, rgba(13, 10, 20, 0.95) 100%); z-index: 10; }
+.setlist-section-bg { background: linear-gradient(135deg, rgba(24, 15, 40, 0.85) 0%, rgba(11, 7, 19, 0.98) 100%); border-left: 3px solid var(--accent-purple); z-index: 20; }
+.performance-section-bg { background: linear-gradient(135deg, rgba(24, 15, 40, 0.88) 0%, rgba(10, 7, 18, 0.97) 100%); border-top: 3px solid var(--accent-green); overflow: hidden; z-index: 30; }
+.team-photo-section-bg { background: linear-gradient(135deg, rgba(27, 20, 42, 0.85) 0%, rgba(15, 11, 24, 0.95) 100%); z-index: 40; }
+.team-members-section-bg { background: linear-gradient(135deg, rgba(17, 13, 27, 0.9) 0%, rgba(11, 7, 18, 0.98) 100%); z-index: 50; }
+.visualizer-section-bg { background: linear-gradient(135deg, rgba(14, 10, 26, 0.95) 0%, rgba(8, 5, 14, 0.99) 100%); border-top: 3px solid var(--accent-green); transition: all 0.4s ease; z-index: 60; }
 
 .section-header-block { text-align: center; margin-bottom: 3rem; }
 .section-main-title {
@@ -241,7 +263,7 @@ body {
 }
 
 /* =========================================
-   1. HERO HEADER SECTION
+   1. HERO HEADER SECTION - MASSIVE DIAGONAL
 ========================================= */
 
 .inner-card-wrapper { position: relative; width: 100%; text-align: center; padding: 2rem 0; }
@@ -258,22 +280,134 @@ body {
 .logo-border {
   --gx: 50%; --gy: 50%; position: relative; z-index: 2;         
   border: 2px solid var(--accent-purple); background-color: var(--panel-bg); 
-  padding: clamp(3rem, 6vw, 6rem) clamp(2rem, 8vw, 8rem);                 
-  border-radius: 16px; box-shadow: 0 0 26px rgba(106, 77, 224, 0.26), 0 0 14px rgba(56, 232, 58, 0.2); 
-  display: inline-block; margin: 1rem; overflow: hidden;
+  width: 90vw;
+  max-width: 1400px;
+  height: 75vh; 
+  min-height: 500px;
+  border-radius: 16px; 
+  box-shadow: 0 0 30px rgba(106, 77, 224, 0.26), 0 0 18px rgba(56, 232, 58, 0.2); 
+  display: block; 
+  margin: 0 auto; 
+  overflow: hidden; 
 }
 
 .logo-border::before {
   content: ''; position: absolute; inset: 0;
-  background: radial-gradient(circle 260px at var(--gx) var(--gy), rgba(56, 232, 58, 0.13), transparent 70%);
+  background: radial-gradient(circle 350px at var(--gx) var(--gy), rgba(56, 232, 58, 0.13), transparent 70%);
   opacity: 0; transition: opacity 0.4s ease; pointer-events: none;
 }
 .logo-border:hover::before { opacity: 1; }
 
-.hero-content { display: flex; align-items: center; justify-content: center; gap: clamp(2rem, 4vw, 4rem); flex-wrap: wrap; }
-.logo-graphic { width: 100%; max-width: clamp(120px, 18vw, 220px); height: auto; filter: drop-shadow(0 0 12px rgba(56, 232, 58, 0.35)); }
-.slash-divider { font-size: clamp(3rem, 7vw, 7rem); font-weight: 300; color: var(--accent-green); line-height: 1; text-shadow: 0 0 14px rgba(56, 232, 58, 0.45); }
-.band-text { display: block; font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 700; letter-spacing: 5px; color: #ffffff; text-shadow: 0 0 13px rgba(161, 114, 214, 0.55); }
+.diagonal-layout {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-logo-cell {
+  position: absolute;
+  top: 10%;
+  left: 6%;
+  max-width: 40%; /* Restricts the box so it never crosses the center line */
+  max-height: 42%; /* Keeps the logo's own height inside the frame regardless of aspect ratio */
+  display: flex;
+  align-items: flex-start;
+  text-align: left;
+  z-index: 3;
+}
+
+.hero-text-cell {
+  position: absolute;
+  bottom: 10%;
+  right: 6%;
+  max-width: 45%; /* Restricts the box so it never crosses the center line */
+  text-align: right;
+  z-index: 3;
+}
+
+/* Two-tone diagonal connector: white where it meets the logo, neon green
+   where it meets the name, read as one continuous graphic. */
+.hero-slash-cell {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 76%;
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    #ffffff 38%,
+    var(--accent-green) 62%,
+    var(--accent-green) 100%
+  );
+  box-shadow: 0 0 22px rgba(255, 255, 255, 0.55), 0 0 34px rgba(56, 232, 58, 0.3);
+  transform: translate(-50%, -50%) rotate(25deg);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Subtle opposing-color accent at each end so the dual identity feels intentional */
+.hero-slash-cell::before,
+.hero-slash-cell::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.hero-slash-cell::before {
+  top: 0;
+  background: radial-gradient(circle, rgba(56, 232, 58, 0.4), transparent 72%);
+}
+
+.hero-slash-cell::after {
+  bottom: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.4), transparent 72%);
+}
+
+.slash-divider { 
+  display: none; 
+}
+
+.logo-graphic { 
+  width: 100%; 
+  max-width: clamp(150px, 20vw, 360px);
+  max-height: 36vh;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 15px rgba(56, 232, 58, 0.45)); 
+}
+
+.band-text { 
+  display: block; 
+  font-size: clamp(2rem, 5vw, 5rem); 
+  font-weight: 800; 
+  letter-spacing: 6px; 
+  color: #ffffff; 
+  text-shadow: 0 0 20px rgba(161, 114, 214, 0.65); 
+  white-space: nowrap;
+}
+
+/* Stack vertically on tight mobile displays */
+@media (max-width: 768px) {
+  .hero-logo-cell { top: 13%; left: 50%; transform: translateX(-50%); max-width: 82%; max-height: 32%; justify-content: center; text-align: center; }
+  .hero-text-cell { bottom: 13%; right: 50%; transform: translateX(50%); max-width: 82%; text-align: center; }
+  .hero-slash-cell { transform: translate(-50%, -50%) rotate(45deg); width: 4px; height: 58%; }
+  .logo-graphic { max-width: clamp(120px, 34vw, 220px); max-height: 24vh; }
+}
+
+/* Extra headroom safeguard for short/landscape viewports so the logo never
+   outgrows the frame vertically */
+@media (max-height: 700px) {
+  .logo-border { height: auto; min-height: 460px; }
+  .logo-graphic { max-height: 24vh; }
+}
+
 
 /* =========================================
    2. INSTRUMENT & SETLIST SECTIONS
@@ -321,13 +455,60 @@ body {
 }
 
 .member-card {
-  --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%; position: relative; border-radius: 16px; overflow: hidden; 
+  --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%;
+  --accent-active: #34ff25; --accent-glow: rgba(52, 255, 37, 0.28); --accent-glow-strong: rgba(52, 255, 37, 0.55);
+  position: relative; border-radius: 16px; overflow: hidden; 
   border: 1px solid rgba(107, 70, 239, 0.35); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
-  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry)); transition: transform 0.25s ease-out, border-color 0.3s ease, box-shadow 0.3s ease;
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 0.25s ease-out, border-color 0.4s ease, box-shadow 0.5s ease;
 }
-.member-card:hover { border-color: #34ff25; box-shadow: 0 20px 55px rgba(0, 0, 0, 0.7), 0 0 30px rgba(52, 255, 37, 0.2); }
-.member-card-photo { position: absolute; inset: 0; background-size: cover; background-position: center; filter: grayscale(0.25) contrast(1.05); transform: scale(1.06); transition: transform 0.5s ease, filter 0.5s ease; }
-.member-card:hover .member-card-photo { transform: scale(1.12); filter: grayscale(0) contrast(1.1); }
+
+/* Signature colors — set the accent variables per member, everything else reads from them */
+.member-card.member-color-red { --accent-active: var(--member-red); --accent-glow: var(--member-red-glow); --accent-glow-strong: var(--member-red-glow-strong); }
+.member-card.member-color-gold { --accent-active: var(--member-gold); --accent-glow: var(--member-gold-glow); --accent-glow-strong: var(--member-gold-glow-strong); }
+.member-card.member-color-blue { --accent-active: var(--member-blue); --accent-glow: var(--member-blue-glow); --accent-glow-strong: var(--member-blue-glow-strong); }
+
+/* Hover: a quiet preview in the member's color — not the full unlocked glow */
+.member-card:hover { border-color: var(--accent-active); box-shadow: 0 20px 55px rgba(0, 0, 0, 0.7), 0 0 20px var(--accent-glow); }
+
+/* Clicked / unlocked: the legendary-card atmosphere */
+.member-card.is-revealed {
+  border-color: var(--accent-active);
+  animation: member-card-breathe 3.6s ease-in-out infinite;
+}
+.member-card.is-revealed:hover {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 30px var(--accent-glow-strong), 0 0 70px var(--accent-glow);
+}
+
+@keyframes member-card-breathe {
+  0%, 100% { box-shadow: 0 20px 55px rgba(0, 0, 0, 0.7), 0 0 22px var(--accent-glow-strong), 0 0 46px var(--accent-glow); }
+  50% { box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 34px var(--accent-glow-strong), 0 0 78px var(--accent-glow); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .member-card.is-revealed { animation: none; box-shadow: 0 20px 55px rgba(0, 0, 0, 0.7), 0 0 26px var(--accent-glow-strong), 0 0 52px var(--accent-glow); }
+}
+
+/* Photo starts frosted/blurred — a hint that something is hidden, not the full picture */
+.member-card-photo {
+  position: absolute; inset: 0; background-size: cover; background-position: center;
+  filter: blur(16px) grayscale(0.4) contrast(1.05) brightness(0.78) saturate(0.7);
+  transform: scale(1.14);
+  transition: transform 0.7s cubic-bezier(0.16, 0.8, 0.24, 1), filter 0.9s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+.member-card:hover .member-card-photo { transform: scale(1.17); }
+
+/* Click reveal: blur and frost lift cleanly, independently per card */
+.member-card.is-revealed .member-card-photo {
+  filter: blur(0) grayscale(0) contrast(1.1) brightness(1) saturate(1.05);
+  transform: scale(1.06);
+}
+.member-card.is-revealed:hover .member-card-photo { transform: scale(1.12); }
+
+@media (prefers-reduced-motion: reduce) {
+  .member-card-photo { transition: filter 0.3s ease; }
+}
+
 .member-card-scrim { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(6, 4, 12, 0.95) 0%, rgba(6, 4, 12, 0.55) 42%, rgba(6, 4, 12, 0.05) 75%); }
 .member-card-sheen { position: absolute; inset: 0; background: radial-gradient(circle 180px at var(--mx) var(--my), rgba(255, 255, 255, 0.16), transparent 65%); opacity: 0; transition: opacity 0.25s ease; pointer-events: none; }
 .member-card:hover .member-card-sheen { opacity: 1; }
@@ -336,9 +517,30 @@ body {
 .member-name { font-size: 1.4rem; font-weight: 700; color: #ffffff; margin: 0 0 0.25rem 0; letter-spacing: 1px; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8); }
 .member-role { display: inline-block; font-size: 0.8rem; font-weight: 700; color: #05030a; background: var(--accent-green); padding: 3px 10px; border-radius: 4px; margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 1px; }
 
+/* Small legible cue so the frosted photo reads as interactive, not just unfinished */
+.member-reveal-hint {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.92);
+  background: rgba(11, 7, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.35); color: #ffffff;
+  padding: 7px 16px; border-radius: 4px; font-weight: 700; letter-spacing: 2px; font-size: 0.72rem;
+  text-transform: uppercase; white-space: nowrap;
+  opacity: 0; transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.17, 0.84, 0.44, 1);
+  pointer-events: none; z-index: 4;
+}
+.member-card:hover .member-reveal-hint { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+/* Modal photo picks up the member's signature color for continuity with the card */
+.member-modal-photo.member-color-red { border-color: var(--member-red); box-shadow: 0 0 34px var(--member-red-glow); }
+.member-modal-photo.member-color-gold { border-color: var(--member-gold); box-shadow: 0 0 34px var(--member-gold-glow); }
+.member-modal-photo.member-color-blue { border-color: var(--member-blue); box-shadow: 0 0 34px var(--member-blue-glow); }
+
 /* =========================================
    4. VISUALIZER COMMAND CENTER & FULLSCREEN
 ========================================= */
+
+.visualizer-stage-wrapper {
+  position: relative;
+  width: 100%;
+}
 
 .visualizer-dashboard {
   display: flex; flex-direction: column; gap: 3.5rem; padding: 3rem; background-color: var(--deep-panel);
@@ -347,32 +549,66 @@ body {
   -webkit-mask-image: -webkit-radial-gradient(white, black);
   mask-image: radial-gradient(white, black);
   transition: all 0.4s ease;
+  cursor: pointer;
 }
 
-/* Fullscreen Mode Overrides */
+/* A quiet cue that the dashboard itself is an entry point, not just a display */
+.visualizer-dashboard::after {
+  content: 'CLICK TO ENTER IMMERSIVE MODE';
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  font-family: monospace; font-size: 0.68rem; letter-spacing: 2px; color: rgba(163, 245, 201, 0.55);
+  opacity: 0; transition: opacity 0.3s ease; pointer-events: none; text-transform: uppercase;
+}
+.visualizer-dashboard:hover::after { opacity: 1; }
+
+/* Fullscreen / immersive mode — applied to the wrapper so the dashboard inside
+   simply relayouts rather than unmounting (keeps the 3D canvas alive). */
 .visualizer-fullscreen {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 99999 !important;
-  border-radius: 0 !important;
-  margin: 0 !important;
-  padding: 2rem clamp(1rem, 3vw, 3rem) !important;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  padding: 2rem clamp(1rem, 3vw, 3rem);
   overflow-y: auto;
-  background: radial-gradient(circle at center, var(--bg-1) 0%, var(--bg-2) 100%) !important;
-  border: none !important;
-  transform: none !important;
-  opacity: 1 !important;
+  background: radial-gradient(circle at center, var(--bg-1) 0%, var(--bg-2) 100%);
   display: flex;
   flex-direction: column;
+  animation: visualizer-immersive-in 0.5s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+}
+
+@keyframes visualizer-immersive-in {
+  0% { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .visualizer-fullscreen { animation: none; }
 }
 
 .visualizer-fullscreen .visualizer-dashboard {
   flex: 1;
   justify-content: center;
+  cursor: default;
 }
+.visualizer-fullscreen .visualizer-dashboard::after { display: none; }
+
+/* Heightened presence while immersive: bigger core, stronger halo, more depth */
+.visualizer-dashboard.is-immersive .core-container { width: clamp(240px, 30vw, 420px); height: clamp(240px, 30vw, 420px); }
+.visualizer-dashboard.is-immersive .canvas-wrapper { width: clamp(280px, 36vw, 480px); height: clamp(280px, 36vw, 480px); }
+.visualizer-dashboard.is-immersive .halo-svg { filter: drop-shadow(0 0 26px rgba(52, 255, 37, 0.55)); }
+.visualizer-dashboard.is-immersive { box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.9), 0 0 70px rgba(56, 232, 58, 0.12); }
+
+.visualizer-exit-btn {
+  position: absolute; top: 0.5rem; right: 0.5rem; z-index: 20;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); color: var(--text-lavender);
+  font-size: 1.5rem; width: 42px; height: 42px; border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.25s ease;
+}
+.visualizer-exit-btn:hover { background: rgba(56, 232, 58, 0.13); color: var(--accent-green); border-color: var(--accent-green); transform: scale(1.08) rotate(90deg); }
+
+.visualizer-header-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 
 .status-live { color: var(--accent-green); }
 .status-down { color: #ff3434; }
@@ -383,6 +619,13 @@ body {
   font-weight: 700; letter-spacing: 1px; font-family: inherit; transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 .connect-btn:hover { background-color: #7a5eea; box-shadow: 0 0 18px rgba(106, 77, 224, 0.5); transform: translateY(-2px); }
+
+.visualizer-expand-btn {
+  margin: 10px 5px 0; padding: 10px 24px; background-color: transparent; color: var(--accent-green);
+  border: 1px solid var(--accent-green); cursor: pointer; border-radius: 4px;
+  font-weight: 700; letter-spacing: 1px; font-family: inherit; transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+.visualizer-expand-btn:hover { background-color: var(--accent-green); color: #05030a; box-shadow: 0 0 18px rgba(56, 232, 58, 0.45); transform: translateY(-2px); }
 
 /* Core stage & Reactive Ambient Effects */
 .core-stage { display: flex; justify-content: center; align-items: center; position: relative; z-index: 1; width: 100%; }
@@ -695,6 +938,7 @@ body {
 .member-modal-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
 .modal-bio-text { font-size: 1.1rem; color: #c4bcdc; line-height: 1.7; }
 @media (max-width: 768px) { .member-modal-layout { flex-direction: column; align-items: center; text-align: center; gap: 2rem; } .member-modal-photo { width: 100%; max-width: 280px; } .member-modal-info { align-items: center; } .modal-title { text-align: center !important; } }
+
 /* =========================================
    5. LIVE PERFORMANCE / TOUR SECTION
 ========================================= */
