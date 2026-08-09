@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import useScrollReveal from './useScrollReveal';
 import Modal from './Modal';
-import trackPlaceholderImg from '../assets/shinji.jpeg'; // Reusing for placeholder
+import trackPlaceholderImg from '../assets/shinji.jpeg'; 
 
-// Data-driven content
+// Updated with exactly 3 tracks
 const setlistTracks = [
-  { id: 1, number: "TRACK 01", title: "Awakening Sequence", duration: "1:45", type: "Main Set", album: "SYSTEM: INITIALIZE", artist: "ONE MAN BAND", photo: trackPlaceholderImg },
-  { id: 2, number: "TRACK 02", title: "Cybernetic Pulse", duration: "2:10", type: "Main Set", album: "SYSTEM: INITIALIZE", artist: "ONE MAN BAND", photo: trackPlaceholderImg },
-  { id: 3, number: "ENCORE 01", title: "Ramiel Overdrive", duration: "1:55", type: "Encore 1", album: "LIVE AT NEO TOKYO", artist: "ONE MAN BAND", photo: trackPlaceholderImg },
-  { id: 4, number: "ENCORE 02", title: "Final Transmission", duration: "1:05", type: "Encore 2", album: "LIVE AT NEO TOKYO", artist: "ONE MAN BAND", photo: trackPlaceholderImg }
+  { id: 1, number: "TRACK 01", title: "Billie Jean", duration: "4:54", type: "Main Set", album: "Thriller", artist: "Michael Jackson", photo: trackPlaceholderImg },
+  { id: 2, number: "TRACK 02", title: "Awakening Sequence", duration: "1:45", type: "Main Set", album: "SYSTEM: INITIALIZE", artist: "ONE MAN BAND", photo: trackPlaceholderImg },
+  { id: 3, number: "TRACK 03", title: "Cybernetic Pulse", duration: "2:10", type: "Main Set", album: "SYSTEM: INITIALIZE", artist: "ONE MAN BAND", photo: trackPlaceholderImg }
 ];
 
 export default function SetlistSection() {
@@ -63,7 +62,6 @@ export default function SetlistSection() {
                 <li><span>Artist:</span> {selectedTrack.artist}</li>
               </ul>
               
-              {/* Visual audio player representation for the modal */}
               <div className="modal-audio-visualizer">
                 {Array.from({length: 20}).map((_, i) => (
                   <div key={i} className="mini-eq-bar" style={{ animationDelay: `${i * 0.05}s` }}></div>

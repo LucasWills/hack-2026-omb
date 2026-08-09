@@ -1,8 +1,16 @@
-import { useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import logo from '../assets/one_man_band_trnsp-2.png';
 
 export default function HeroHeader() {
   const borderRef = useRef(null);
+  const [scrollY, setScrollY] = useState(0);
+
+  // Track the window scroll position for the curtain fade effect
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleMove = (e) => {
     const node = borderRef.current;
@@ -14,19 +22,30 @@ export default function HeroHeader() {
     node.style.setProperty('--gy', `${gy}%`);
   };
 
+  // Calculate dynamic styles for the curtain effect
+  // Fades out completely after 600px of scroll
+  const fadeOpacity = Math.max(1 - scrollY / 600, 0);
+  // Zooms out very slightly to push the hero deep into the background
+  const fadeScale = Math.max(1 - scrollY / 4000, 0.92);
+
   return (
-    <div className="inner-card-wrapper hero-intro">
-      <div className="solid-bg-rect"></div>
-      <div className="logo-border" ref={borderRef} onMouseMove={handleMove}>
-        <div className="hero-content">
-          <img
-            src={logo}
-            alt="One Man Band Logo"
-            className="logo-graphic"
-          />
-          <div className="slash-divider">/</div>
-          <div className="band-text-group">
-            <span className="band-text">ONE MAN BAND</span>
+    <div 
+      className="hero-curtain-container" 
+      style={{ opacity: fadeOpacity, transform: `scale(${fadeScale})` }}
+    >
+      <div className="inner-card-wrapper hero-intro">
+        <div className="solid-bg-rect"></div>
+        <div className="logo-border" ref={borderRef} onMouseMove={handleMove}>
+          <div className="hero-content">
+            <img
+              src={logo}
+              alt="One Man Band Logo"
+              className="logo-graphic"
+            />
+            <div className="slash-divider">/</div>
+            <div className="band-text-group">
+              <span className="band-text">ONE MAN BAND</span>
+            </div>
           </div>
         </div>
       </div>

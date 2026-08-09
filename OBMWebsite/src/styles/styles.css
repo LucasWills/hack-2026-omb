@@ -47,12 +47,8 @@ body {
   flex-direction: column;
   align-items: center;
   padding: 4vw 2vw;
-  overflow: hidden;
 }
 
-/* Two large, slow-drifting glows that live behind the whole page so the
-   space between sections still feels like the same lit environment
-   instead of dead black gaps. */
 .bg-strip::before,
 .bg-strip::after {
   content: '';
@@ -102,16 +98,46 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5rem; 
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
 }
 
-/* A faint signal line running through the gaps between sections, so
-   scrolling between them feels like following one continuous circuit
-   rather than jumping between disconnected boxes. */
-.main-layout-container::before {
+/* =========================================
+   CURTAIN EFFECT CLASSES & HERO CENTERING
+========================================= */
+
+.hero-curtain-container {
+  position: sticky;
+  top: 0;
+  /* Ensure it takes up exactly the viewport height, and offset the 4vw padding of the wrapper so it centers perfectly in default scale */
+  height: 100vh;
+  margin-top: -4vw;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 0;
+  will-change: opacity, transform;
+  pointer-events: none; 
+}
+
+.hero-curtain-container .inner-card-wrapper {
+  pointer-events: auto; 
+}
+
+.content-curtain-reveal {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 5rem;
+  width: 100%;
+  margin-top: 2rem; 
+}
+
+.content-curtain-reveal::before {
   content: '';
   position: absolute;
   top: 0;
@@ -138,7 +164,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .main-layout-container::before { animation: none; }
+  .content-curtain-reveal::before { animation: none; }
 }
 
 .content-section {
@@ -152,8 +178,6 @@ body {
   position: relative;
 }
 
-/* Soft top-edge glow on every section so the transition out of the
-   gap above feels lit rather than a hard cut into a box. */
 .content-section::before {
   content: '';
   position: absolute;
@@ -169,7 +193,7 @@ body {
 .instrument-section-bg { background: linear-gradient(135deg, rgba(22, 17, 33, 0.8) 0%, rgba(13, 10, 20, 0.95) 100%); }
 .team-photo-section-bg { background: linear-gradient(135deg, rgba(27, 20, 42, 0.85) 0%, rgba(15, 11, 24, 0.95) 100%); }
 .team-members-section-bg { background: linear-gradient(135deg, rgba(17, 13, 27, 0.9) 0%, rgba(11, 7, 18, 0.98) 100%); }
-.visualizer-section-bg { background: linear-gradient(135deg, rgba(14, 10, 26, 0.95) 0%, rgba(8, 5, 14, 0.99) 100%); border-top: 3px solid var(--accent-green); }
+.visualizer-section-bg { background: linear-gradient(135deg, rgba(14, 10, 26, 0.95) 0%, rgba(8, 5, 14, 0.99) 100%); border-top: 3px solid var(--accent-green); transition: all 0.4s ease; }
 .setlist-section-bg { background: linear-gradient(135deg, rgba(24, 15, 40, 0.85) 0%, rgba(11, 7, 19, 0.98) 100%); border-left: 3px solid var(--accent-purple); }
 .performance-section-bg { background: linear-gradient(135deg, rgba(24, 15, 40, 0.88) 0%, rgba(10, 7, 18, 0.97) 100%); border-top: 3px solid var(--accent-green); overflow: hidden; }
 
@@ -313,7 +337,7 @@ body {
 .member-role { display: inline-block; font-size: 0.8rem; font-weight: 700; color: #05030a; background: var(--accent-green); padding: 3px 10px; border-radius: 4px; margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 1px; }
 
 /* =========================================
-   4. VISUALIZER COMMAND CENTER
+   4. VISUALIZER COMMAND CENTER & FULLSCREEN
 ========================================= */
 
 .visualizer-dashboard {
@@ -322,13 +346,39 @@ body {
   position: relative; overflow: hidden !important; 
   -webkit-mask-image: -webkit-radial-gradient(white, black);
   mask-image: radial-gradient(white, black);
+  transition: all 0.4s ease;
+}
+
+/* Fullscreen Mode Overrides */
+.visualizer-fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 2rem clamp(1rem, 3vw, 3rem) !important;
+  overflow-y: auto;
+  background: radial-gradient(circle at center, var(--bg-1) 0%, var(--bg-2) 100%) !important;
+  border: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.visualizer-fullscreen .visualizer-dashboard {
+  flex: 1;
+  justify-content: center;
 }
 
 .status-live { color: var(--accent-green); }
 .status-down { color: #ff3434; }
 
 .connect-btn {
-  margin-top: 10px; padding: 10px 24px; background-color: var(--accent-purple); color: #fff;
+  margin: 10px 5px 0; padding: 10px 24px; background-color: var(--accent-purple); color: #fff;
   border: 1px solid rgba(56, 232, 58, 0.35); cursor: pointer; border-radius: 4px;
   font-weight: 700; letter-spacing: 1px; font-family: inherit; transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
@@ -435,9 +485,9 @@ body {
 
 .frequency-wing {
   display: flex;
-  flex-direction: row; /* Spaced horizontally side-by-side */
+  flex-direction: row; 
   justify-content: space-between;
-  align-items: flex-end; /* Grows bottom-up */
+  align-items: flex-end; 
   height: clamp(96px, 18vw, 150px);
   padding: 8px;
   gap: 8px;
@@ -450,7 +500,7 @@ body {
   flex: 1;
   height: 100%;
   display: flex;
-  flex-direction: column-reverse; /* Bottom-up filling */
+  flex-direction: column-reverse; 
   background: rgba(255, 255, 255, 0.03);
   border-radius: 3px;
   overflow: hidden;

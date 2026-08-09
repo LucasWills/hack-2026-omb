@@ -11,12 +11,16 @@ export default function App() {
     <div className="bg-strip">
       <div className="main-layout-container">
         <HeroHeader />
-        <InstrumentSection />
-        <SetlistSection />
-        <PerformanceSection />
-        <TeamPhotoSection />
-        <TeamMembersSection />
-        <VisualizerSection />
+        
+        {/* We group the rest of the sections together so they can seamlessly scroll OVER the sticky Hero header */}
+        <div className="content-curtain-reveal">
+          <InstrumentSection />
+          <SetlistSection />
+          <PerformanceSection />
+          <TeamPhotoSection />
+          <TeamMembersSection />
+          <VisualizerSection />
+        </div>
       </div>
     </div>
   );

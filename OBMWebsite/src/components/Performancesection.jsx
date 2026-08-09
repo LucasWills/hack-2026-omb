@@ -1,10 +1,31 @@
 import useScrollReveal from './useScrollReveal';
 
-// Placeholder tour dates - swap in real shows as they're booked.
+// 1. Past Show in LA | 2. Tomorrow's Show at UCLA | 3. Future Show in LA
 const tourDates = [
-  { date: '09.20', month: 'SEP', event: 'Neo Tokyo Circuit', venue: 'Shibuya Underground Hall', city: 'Neo Tokyo', status: 'Tickets Live' },
-  { date: '10.04', month: 'OCT', event: 'Signal Feedback Tour', venue: 'The Amplifier', city: 'Los Angeles', status: 'Tickets Live' },
-  { date: '11.15', month: 'NOV', event: 'Final Transmission', venue: 'Warehouse 7', city: 'Austin', status: 'Waitlist Open' },
+  { 
+    date: '07.15', 
+    month: 'JUL', 
+    event: 'Summer Echoes Showcase', 
+    venue: 'The Wiltern', 
+    city: 'Los Angeles', 
+    status: 'Ended / Sold Out' 
+  },
+  { 
+    date: '08.09', 
+    month: 'AUG', 
+    event: 'UCLA Hackathon Showcase', 
+    venue: 'Engineering 6 Room 134', 
+    city: 'UCLA, Los Angeles', 
+    status: 'Live Today!' 
+  },
+  { 
+    date: '10.31', 
+    month: 'OCT', 
+    event: 'Halloween Frequency Fest', 
+    venue: 'El Rey Theatre', 
+    city: 'Los Angeles', 
+    status: 'Tickets Live' 
+  },
 ];
 
 export default function PerformanceSection() {
