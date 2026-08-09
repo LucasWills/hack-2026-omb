@@ -61,30 +61,36 @@ display_bus = i2cdisplaybus.I2CDisplayBus(i2c, device_address = 0x3C)
 
 display = adafruit_displayio_ssd1306.SSD1306(display_bus, width=128, height=64)
 
-# Create a Label to show the readings. If you have a very small
-# display you may need to change to scale=1.
-display_output_label = Label(FONT, text="", scale=1)
 
-# create labels to display at locations
+# synth
 disp_synth_label = Label(FONT, text="", scale=1)
 disp_synth_label.anchor_point = (0, 0)
 disp_synth_label.anchored_position = (4, 0)
 
+# track
 disp_track_label = Label(FONT, text="", scale=1)
 disp_track_label.anchor_point = (0, 0)
 disp_track_label.anchored_position = (4, 10)
 
+# volume
 disp_volume_label = Label(FONT, text="", scale=1)
 disp_volume_label.anchor_point = (0, 0)
 disp_volume_label.anchored_position = (4, 20)
 
+# octave
 disp_octave_label = Label(FONT, text="", scale=1)
 disp_octave_label.anchor_point = (0, 0)
 disp_octave_label.anchored_position = (4, 30)
 
+# modulation
 disp_mod_label = Label(FONT, text="", scale=1)
 disp_mod_label.anchor_point = (0, 0)
 disp_mod_label.anchored_position = (4, 40)
+
+# metronome
+disp_metr_label = Label(FONT, text="", scale=1)
+disp_metr_label.anchor_point = (0, 0)
+disp_metr_label.anchored_position = (4, 50)
 
 
 # add the labels to the main_group
@@ -93,6 +99,7 @@ main_group.append(disp_track_label)
 main_group.append(disp_volume_label)
 main_group.append(disp_octave_label)
 main_group.append(disp_mod_label)
+main_group.append(disp_metr_label)
 
 # set the main_group as the root_group of the built-in DISPLAY
 display.root_group = main_group
@@ -237,6 +244,14 @@ def play_loop():
     active_synth_name = synth_names[active_synth]
     volume = 0.8
     octave = 0
+    # BPM / 60 = BPS
+    # 1 / BPS = seconds per beat
+    BPS = 120 / 60
+    sec_per_eighth = 1.0 / (BPS * 2)
+    current_eighth = 0
+    current_bar = 0
+    
+    last_eighth_time = 0
     
     vol_up_pressed = 0
     vol_down_pressed = 0
@@ -250,6 +265,7 @@ def play_loop():
     
     # play loop!
     while True:
+        
         # run every 10 ticks
         if (clock % 10 == 0):
             
@@ -262,9 +278,15 @@ def play_loop():
             disp_volume_label.text = f"Volume: {round(volume * 100) + 10}%"
             disp_octave_label.text = f"Octave: +{octave}" if (octave > 0) else f"Octave: {octave}"
             disp_mod_label.text = f"Modulation: {round((get_modulation() / modulator_multiplier) * 100)}%"
+            
         
         
-
+        if (time.monotonic() >= last_eighth_time + sec_per_eighth):
+            current_eighth += 1
+            if current_eighth > 8:
+                current_eighth = 0
+                current_bar += 1
+            
         
         lfo_tremolo.scale = -get_modulation()
         
