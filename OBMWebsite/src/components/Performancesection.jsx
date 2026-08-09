@@ -33,6 +33,7 @@ export default function PerformanceSection() {
 
   return (
     <div
+      id="live-shows"
       className={`content-section performance-section-bg reveal ${isVisible ? 'is-visible' : ''}`}
       ref={ref}
     >

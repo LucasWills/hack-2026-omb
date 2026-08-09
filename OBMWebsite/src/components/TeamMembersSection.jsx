@@ -1,6 +1,7 @@
 import { useRef, useState, useMemo } from 'react';
 import memberPhotoPlaceholder from '../assets/shinji.jpeg';
 import lucasPhoto from '../assets/Lucas.png';
+import musiePhoto from '../assets/Musie.png';
 import useScrollReveal from './useScrollReveal';
 import Modal from './Modal';
 
@@ -42,22 +43,79 @@ function generateParticles(count) {
   });
 }
 
+// Seeds small orb-like embers ON THE CARD'S PERIMETER (not across its face),
+// which is what makes the legendary effect read as an *edge* treatment.
+// Positions are distributed around the border; travel is dominantly
+// north-east with per-ember variation in distance, size, speed and lifetime
+// so the field never looks like a repeating loop. Kept few and small on
+// purpose — the brief asks for subtle embers, not a ring of flames.
+function generateEdgeEmbers(count) {
+  return Array.from({ length: count }, (_, i) => {
+    // Walk the perimeter so embers are spread evenly around all four edges,
+    // with a bias toward the bottom/left edges since energy travels up-right
+    // and should appear to originate from the trailing side of the card.
+    const t = (i + Math.random() * 0.6) / count;
+    let left;
+    let top;
+    if (t < 0.3) {            // bottom edge
+      left = `${(t / 0.3) * 100}%`;
+      top = `${94 + Math.random() * 6}%`;
+    } else if (t < 0.6) {     // left edge
+      left = `${-2 + Math.random() * 5}%`;
+      top = `${100 - ((t - 0.3) / 0.3) * 100}%`;
+    } else if (t < 0.85) {    // right edge
+      left = `${95 + Math.random() * 5}%`;
+      top = `${100 - ((t - 0.6) / 0.25) * 100}%`;
+    } else {                  // top edge
+      left = `${((t - 0.85) / 0.15) * 100}%`;
+      top = `${-2 + Math.random() * 5}%`;
+    }
+
+    // North-east travel: positive X, negative Y (screen coords), with the
+    // angle jittered around -45deg so embers fan out slightly.
+    const angleDeg = -62 + Math.random() * 34;
+    const angle = (angleDeg * Math.PI) / 180;
+    const distance = 34 + Math.random() * 66;
+
+    return {
+      id: i,
+      style: {
+        '--e-left': left,
+        '--e-top': top,
+        '--e-size': `${(2.5 + Math.random() * 3.5).toFixed(1)}px`,
+        '--e-tx': `${(Math.cos(angle) * distance).toFixed(1)}px`,
+        '--e-ty': `${(Math.sin(angle) * distance).toFixed(1)}px`,
+        '--e-dur': `${(2.6 + Math.random() * 2.4).toFixed(2)}s`,
+        '--e-delay': `${(Math.random() * 4.5).toFixed(2)}s`,
+        '--e-op': (0.45 + Math.random() * 0.45).toFixed(2),
+      },
+    };
+  });
+}
+
 // Data-driven content: Mussie -> Lucas -> Asher
 // colorKey drives each member's signature border/glow color (see member-color-* in styles.css)
+// bio is an array of paragraphs so longer intros break naturally in the modal.
 const teamMembers = [
   {
     id: 3,
     name: "Mussie Yigzaw",
     role: "Yabai",
-    bio: "Placeholder description detailing Mussie's contributions to the collective. Focused on acoustic resonance testing, signal flow, and structural integrity.",
-    photo: memberPhotoPlaceholder,
+    bio: [
+      "Hey, I'm Mussie and I'm a UCLA transfer student studying mechanical engineering.",
+      "Day to day, I love singing, dancing, playing video games, doom scrolling, and going to the gym. Outside of that, I love to hike and snowboard.",
+      "My top three favorite musical artists in order are Michael Jackson, Kanye West, and the Weeknd."
+    ],
+    photo: musiePhoto,
     colorKey: "red"
   },
   {
     id: 2,
     name: "Lucas Wills",
     role: "Yabai",
-    bio: "Placeholder description detailing Lucas's contributions to the collective. Responsible for overseeing the core system architecture and prototyping workflows.",
+    bio: [
+      "Placeholder description detailing Lucas's contributions to the collective. Responsible for overseeing the core system architecture and prototyping workflows."
+    ],
     photo: lucasPhoto,
     colorKey: "gold"
   },
@@ -65,7 +123,9 @@ const teamMembers = [
     id: 1,
     name: "Asher Vicera",
     role: "Yabai",
-    bio: "Placeholder description detailing Asher's contributions to the collective. Engineered the live telemetry pipelines, UI development, and data-driven visualizers.",
+    bio: [
+      "Placeholder description detailing Asher's contributions to the collective. Engineered the live telemetry pipelines, UI development, and data-driven visualizers."
+    ],
     photo: memberPhotoPlaceholder,
     colorKey: "blue"
   }
@@ -75,6 +135,7 @@ function MemberCard({ member, isRevealed, onClick }) {
   const cardRef = useRef(null);
   // Stable per-card randomization — generated once, not re-rolled on every render.
   const particles = useMemo(() => generateParticles(16), []);
+  const edgeEmbers = useMemo(() => generateEdgeEmbers(14), []);
 
   const handleMove = (e) => {
     const card = cardRef.current;
@@ -109,7 +170,7 @@ function MemberCard({ member, isRevealed, onClick }) {
       <div className="member-card-visual">
         <div
           className="member-card-photo"
-          style={{ backgroundImage: `url(${member.photo})` }}
+          style={{ backgroundImage: `url("${member.photo}")` }}
         />
         <div className="member-card-scrim" />
         <div className="member-card-sheen" />
@@ -117,7 +178,16 @@ function MemberCard({ member, isRevealed, onClick }) {
         <div className="member-card-info">
           <span className="member-role">{member.role}</span>
           <h3 className="member-name">{member.name}</h3>
+          <span className="member-name-streak" aria-hidden="true"></span>
         </div>
+      </div>
+
+      {/* Legendary-tier edge energy: aurora bloom on the border (CSS
+          pseudo-elements) plus perimeter embers drifting north-east. */}
+      <div className="member-card-edge" aria-hidden="true">
+        {edgeEmbers.map((e) => (
+          <span key={e.id} className="member-edge-ember" style={e.style} />
+        ))}
       </div>
 
       <div className="member-particle-field" aria-hidden="true">
@@ -172,20 +242,25 @@ export default function TeamMembersSection() {
 
       <Modal isOpen={!!selectedMember} onClose={closeMember}>
         {selectedMember && (
-          <div className="member-modal-layout">
+          /* The member-color-* class lives on the LAYOUT, not just the photo,
+             so the badge, streak, divider, portrait frame and bio rail all
+             resolve from this one member's palette. */
+          <div className={`member-modal-layout member-color-${selectedMember.colorKey}`}>
             <img
               src={selectedMember.photo}
               alt={selectedMember.name}
-              className={`member-modal-photo member-color-${selectedMember.colorKey}`}
+              className="member-modal-photo"
             />
-            
+
             <div className="member-modal-info">
-              <span className="member-role" style={{ fontSize: '1rem', padding: '5px 12px' }}>{selectedMember.role}</span>
-              <h2 className="modal-title" style={{ textAlign: 'left', marginTop: '1rem' }}>{selectedMember.name}</h2>
-              <div className="modal-divider"></div>
-              <p className="modal-bio-text">
-                {selectedMember.bio}
-              </p>
+              <span className="member-role">{selectedMember.role}</span>
+              <h2 className="member-modal-name">{selectedMember.name}</h2>
+              <span className="member-modal-streak" aria-hidden="true"></span>
+              <div className="modal-bio-text">
+                {selectedMember.bio.map((paragraph, i) => (
+                  <p key={i}>{paragraph}</p>
+                ))}
+              </div>
             </div>
           </div>
         )}

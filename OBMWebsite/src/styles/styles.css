@@ -11,6 +11,14 @@
   --panel-border: rgba(112, 78, 225, 0.25);
   --deep-panel: #0c0916;
 
+  /* Single shared surface tone. Deliberately OPAQUE and identical to the
+     page background: the Logo area and the Instrument Specifications panel
+     have to read as one continuous environment (no off-color seam between
+     them), while the Instrument panel still needs to be solid enough to
+     cover the hero as it rises over it during the curtain. */
+  --surface-1: #14101f;
+  --surface-2: #171227;
+
   --accent-green: #38e83a;
   --accent-green-soft: rgba(56, 232, 58, 0.35);
   --accent-purple: #6a4de0;
@@ -20,16 +28,29 @@
   --text-primary: #f2f0f5;
   --text-lavender: #c3b4e6;
 
-  /* Team-member signature colors (used for the collectible-card reveal system) */
+  /* Team-member signature colors (used for the collectible-card reveal system).
+     Each member carries four values: the pure accent (borders/streak), two
+     glow strengths, a translucent *tint* used as the "Yabai" badge background,
+     and an *ink* — a near-white wash of the same hue, chosen so the badge text
+     stays high-contrast against that tint instead of using the raw accent
+     color (which reads poorly on red in particular). */
   --member-red: #ff4141;
   --member-red-glow: rgba(255, 65, 65, 0.32);
   --member-red-glow-strong: rgba(255, 65, 65, 0.58);
+  --member-red-tint: rgba(255, 65, 65, 0.16);
+  --member-red-ink: #ffe4e4;
+
   --member-gold: #ffd23f;
   --member-gold-glow: rgba(255, 210, 63, 0.32);
   --member-gold-glow-strong: rgba(255, 210, 63, 0.58);
+  --member-gold-tint: rgba(255, 210, 63, 0.16);
+  --member-gold-ink: #fff6d8;
+
   --member-blue: #3ad8ff;
   --member-blue-glow: rgba(58, 216, 255, 0.32);
   --member-blue-glow-strong: rgba(58, 216, 255, 0.58);
+  --member-blue-tint: rgba(58, 216, 255, 0.16);
+  --member-blue-ink: #e2f8ff;
 }
 
 /* =========================================
@@ -42,7 +63,10 @@
 
 body {
   margin: 0;
-  background: radial-gradient(circle at center, var(--bg-1) 0%, var(--bg-2) 100%);
+  /* Flat, single-tone page surface identical to --surface-1. The old
+     radial gradient is what produced the visible lighter band between the
+     logo area and the Instrument Specifications panel. */
+  background: var(--surface-1);
   color: var(--text-primary);
   font-family: 'Rajdhani', sans-serif;
   min-height: 100vh;
@@ -57,10 +81,14 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4vw 2vw;
+  padding: 0;
 }
 
-.bg-strip::before,
+/* The green ambient blob used to sit directly behind the top of the page,
+   which is exactly what tinted the strip between the logo and the
+   Instrument Specifications panel a different shade. Only a single, very
+   faint purple wash remains, kept low on the page and well away from that
+   transition so the top of the site reads as one flat environment. */
 .bg-strip::after {
   content: '';
   position: fixed;
@@ -69,29 +97,14 @@ body {
   max-width: 700px;
   max-height: 700px;
   border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.14;
+  filter: blur(140px);
+  opacity: 0.08;
   pointer-events: none;
   z-index: 0;
-}
-
-.bg-strip::before {
-  top: -12%;
-  left: -15%;
-  background: var(--accent-green);
-  animation: drift-a 34s ease-in-out infinite alternate;
-}
-
-.bg-strip::after {
-  bottom: -12%;
+  bottom: -18%;
   right: -15%;
   background: var(--accent-purple);
   animation: drift-b 40s ease-in-out infinite alternate;
-}
-
-@keyframes drift-a {
-  0% { transform: translate(0, 0); }
-  100% { transform: translate(6vw, 8vh); }
 }
 
 @keyframes drift-b {
@@ -100,17 +113,20 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bg-strip::before, .bg-strip::after { animation: none; }
+  .bg-strip::after { animation: none; }
 }
 
 .main-layout-container {
+  /* Full-bleed canvas — no boxed/centered container. Individual sections
+     still cap and pad their own inner content for readability (see
+     .content-section), but the panels themselves now run edge-to-edge. */
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -141,58 +157,156 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
    CURTAIN EFFECT CLASSES & HERO CENTERING
 ========================================= */
 
+/* Initial composition: hero occupies ~4/10 of the viewport, leaving the
+   remaining ~6/10 for the Instrument Specification panel to already read
+   as part of the first screen (see brief section 1). The container's own
+   height is what governs how long it stays pinned via `position: sticky`
+   before the Instrument section rises over it like a curtain (section 3). */
+/* The hero is now a column: title/logo block on top, section nav beneath.
+   Height nudged up slightly to absorb the nav row without eating into the
+   Instrument Specifications panel's share of the first screen. */
 .hero-curtain-container {
   position: sticky;
   top: 0;
-  height: 100vh;
-  margin-top: -4vw;
+  height: clamp(250px, 44svh, 500px);
   width: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   z-index: 0;
-  will-change: opacity, transform;
-  pointer-events: none; 
+  will-change: opacity;
+  pointer-events: none;
+}
+
+/* Progressive fallback for browsers without svh support. */
+@supports not (height: 1svh) {
+  .hero-curtain-container { height: clamp(250px, 44vh, 500px); }
 }
 
 .hero-curtain-container .inner-card-wrapper {
-  pointer-events: auto; 
+  pointer-events: auto;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  width: 100%;
+  height: 100%;
 }
 
+/* The title/logo block takes the available height; the nav sits under it. */
+.hero-curtain-container .logo-border { flex: 1 1 auto; min-height: 0; }
+
+/* =========================================
+   SECTION NAVIGATION
+   Minimal anchor bar under the title. Reuses the site's existing language:
+   monospace caps, wide tracking, lavender text, hairline purple dividers,
+   and the green accent + glow reserved for hover/focus so the bar reads as
+   a quiet utility rather than a second headline.
+========================================= */
+.hero-nav {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0 clamp(0.5rem, 1.6vw, 1.5rem);
+  width: 100%;
+  max-width: 1500px;
+  padding: clamp(0.5rem, 1.4vh, 0.9rem) clamp(1.5rem, 5vw, 5rem) 0;
+  border-top: 1px solid var(--panel-border);
+  margin-top: clamp(0.35rem, 1vh, 0.75rem);
+}
+
+.hero-nav-link {
+  position: relative;
+  font-family: monospace;
+  font-size: clamp(0.6rem, 1.05vw, 0.74rem);
+  letter-spacing: clamp(1px, 0.25vw, 2.5px);
+  text-transform: uppercase;
+  color: var(--text-lavender);
+  text-decoration: none;
+  opacity: 0.72;
+  padding: 0.45rem clamp(0.3rem, 0.8vw, 0.6rem);
+  white-space: nowrap;
+  transition: color 0.25s ease, opacity 0.25s ease, text-shadow 0.25s ease;
+}
+
+/* Hairline separators between items, drawn with a pseudo-element so they
+   don't appear at the ends or after a wrap. */
+.hero-nav-link + .hero-nav-link::before {
+  content: '';
+  position: absolute;
+  left: calc(clamp(0.5rem, 1.6vw, 1.5rem) / -2);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 10px;
+  background: var(--panel-border);
+}
+
+.hero-nav-link:hover,
+.hero-nav-link:focus-visible {
+  color: var(--accent-green);
+  opacity: 1;
+  text-shadow: 0 0 10px rgba(56, 232, 58, 0.45);
+  outline: none;
+}
+
+/* Underline grows from the centre on hover — matches the site's restrained
+   accent-on-interaction pattern. */
+.hero-nav-link::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0.1rem;
+  width: 0;
+  height: 1px;
+  background: var(--accent-green);
+  box-shadow: 0 0 8px rgba(56, 232, 58, 0.6);
+  transform: translateX(-50%);
+  transition: width 0.28s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+.hero-nav-link:hover::after,
+.hero-nav-link:focus-visible::after { width: calc(100% - 0.6rem); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-nav-link, .hero-nav-link::after { transition: none; }
+}
+
+/* Narrow screens: allow the bar to breathe and drop the dividers, which
+   read badly once items wrap onto two rows. */
+@media (max-width: 640px) {
+  .hero-nav { gap: 0 0.35rem; padding-left: 0.75rem; padding-right: 0.75rem; }
+  .hero-nav-link + .hero-nav-link::before { display: none; }
+}
+
+/* Anchor landing offset so a scrolled-to section never sits flush against
+   the very top edge of the viewport. */
+#featured-instrument,
+#latest-album,
+#live-shows,
+#about,
+#stage { scroll-margin-top: 0; }
+
 .content-curtain-reveal {
+  /* Sits above the pinned hero so the Instrument section can travel over it
+     during the curtain. Sections run flush against one another on one
+     continuous surface. */
   position: relative;
   z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: 5rem;
+  gap: 0;
   width: 100%;
-  margin-top: 2rem; 
+  margin-top: 0;
 }
 
-.content-curtain-reveal::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 2px;
-  transform: translateX(-50%);
-  background: linear-gradient(
-    180deg,
-    transparent,
-    var(--accent-purple-soft) 12%,
-    var(--accent-green-soft) 50%,
-    var(--accent-purple-soft) 88%,
-    transparent
-  );
-  opacity: 0.3;
-  z-index: -1;
-  animation: spine-pulse 6s ease-in-out infinite;
-}
+/* The old center "spine" only read against a visible gap between boxed
+   cards — now that sections run flush and edge-to-edge it has nothing
+   to sit inside, so it's retired in favor of each section's own top-edge
+   divider glow (.content-section::before). */
+.content-curtain-reveal::before { display: none; }
 
 @keyframes spine-pulse {
   0%, 100% { opacity: 0.18; }
@@ -203,32 +317,33 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
   .content-curtain-reveal::before { animation: none; }
 }
 
+/* Sections are ordinary, statically-positioned blocks. The ONLY curtain on
+   the page is the hero: it pins itself (see .hero-curtain-container) and the
+   Instrument Specifications section rises over it until it reaches the very
+   top of the viewport, at which point the hero is fully covered and the rest
+   of the page scrolls completely normally.
+
+   No `backdrop-filter`, `transform` or `filter` anywhere on these sections —
+   each of those silently becomes the containing block for `position: fixed`
+   descendants, which is what used to trap the visualizer's immersive overlay
+   inside its own section box. */
 .content-section {
+  position: relative;
   width: 100%;
-  padding: 4rem clamp(2rem, 5vw, 6rem);
-  border-radius: 16px;
-  border: 1px solid var(--panel-border);
-  background: var(--panel-bg);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.7);
-  /* Each section stays pinned briefly as the next one rises over it, extending
-     the hero's curtain-reveal language down through the whole page. */
-  position: sticky;
-  top: clamp(1.25rem, 3.5vw, 2.75rem);
+  padding: clamp(2.25rem, 5vw, 3.75rem) clamp(1.5rem, 5vw, 5rem);
+  border-radius: 0;
+  border: none;
+  background: var(--surface-1);
 }
 
-/* backdrop-filter (like transform/filter/will-change:transform) creates a
-   CSS containing block for position:fixed descendants. That silently trapped
-   the visualizer's "fullscreen" immersive overlay inside this section's own
-   box instead of the real viewport. Stripping just the filter — not the
-   sticky positioning — while immersive mode is active is the actual fix;
-   see .visualizer-fullscreen / .content-section.is-immersive-active below. */
-.content-section.is-immersive-active {
-  backdrop-filter: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .content-section { position: relative; top: auto; }
+/* The Instrument panel is the curtain itself, so it must be fully opaque to
+   cover the hero as it travels up — and carries no top border/shadow, since
+   any edge treatment there would re-introduce the visible seam between the
+   logo area and the specifications (requirement 1). */
+.instrument-section-bg.content-section {
+  border-top: none;
+  box-shadow: none;
+  z-index: 3;
 }
 
 .content-section::before {
@@ -243,16 +358,22 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
   pointer-events: none;
 }
 
-/* z-index climbs section-by-section down the page so each new panel rises
-   over the one before it instead of just fading in beside it. */
-.instrument-section-bg { background: linear-gradient(135deg, rgba(22, 17, 33, 0.8) 0%, rgba(13, 10, 20, 0.95) 100%); z-index: 10; }
-.setlist-section-bg { background: linear-gradient(135deg, rgba(24, 15, 40, 0.85) 0%, rgba(11, 7, 19, 0.98) 100%); border-left: 3px solid var(--accent-purple); z-index: 20; }
-.performance-section-bg { background: linear-gradient(135deg, rgba(24, 15, 40, 0.88) 0%, rgba(10, 7, 18, 0.97) 100%); border-top: 3px solid var(--accent-green); overflow: hidden; z-index: 30; }
-.team-photo-section-bg { background: linear-gradient(135deg, rgba(27, 20, 42, 0.85) 0%, rgba(15, 11, 24, 0.95) 100%); z-index: 40; }
-.team-members-section-bg { background: linear-gradient(135deg, rgba(17, 13, 27, 0.9) 0%, rgba(11, 7, 18, 0.98) 100%); z-index: 50; }
-.visualizer-section-bg { background: linear-gradient(135deg, rgba(14, 10, 26, 0.95) 0%, rgba(8, 5, 14, 0.99) 100%); border-top: 3px solid var(--accent-green); transition: all 0.4s ease; z-index: 60; }
+/* No divider above the curtain section — see above. */
+.instrument-section-bg.content-section::before { display: none; }
 
-.section-header-block { text-align: center; margin-bottom: 3rem; }
+/* Every section now draws on the SAME flat surface tone as the page itself,
+   so the site reads as one continuous environment. Sections are told apart
+   by their accent edge treatment and their content — not by a different
+   background shade each (which is what produced the visible seams). The
+   later sections keep their existing accent identity. */
+.instrument-section-bg { background: var(--surface-1); }
+.setlist-section-bg { background: var(--surface-1); border-left: 3px solid var(--accent-purple); }
+.performance-section-bg { background: var(--surface-1); border-top: 3px solid var(--accent-green); overflow: hidden; }
+.team-photo-section-bg { background: var(--surface-1); }
+.team-members-section-bg { background: var(--surface-1); }
+.visualizer-section-bg { background: var(--surface-1); border-top: 3px solid var(--accent-green); }
+
+.section-header-block { text-align: center; margin-bottom: 2rem; }
 .section-main-title {
   font-size: clamp(2rem, 3.5vw, 3rem);
   font-weight: 700;
@@ -266,147 +387,132 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 
 /* =========================================
    REACTIVE / MOTION SYSTEM
+   Section BACKGROUNDS never move or fade — they are stable surfaces.
+   Only the CONTENT inside a section animates in, so scrolling reads as
+   content arriving on a steady stage rather than whole panels sliding
+   around. One shared, subtle cue (fade + small rise) is reused everywhere
+   for consistency, with a light stagger between sibling blocks.
 ========================================= */
 
-.reveal {
+/* The section element itself is intentionally inert: no opacity, transform
+   or filter. (Those also created containing blocks that broke fixed-position
+   overlays such as the visualizer's immersive mode.) */
+.reveal { opacity: 1; transform: none; }
+
+/* Direct content blocks of any section: the shared reveal cue. */
+.reveal > *,
+.reveal > .visualizer-stage-wrapper > * {
   opacity: 0;
-  transform: translateY(48px);
+  transform: translateY(16px);
   transition:
-    opacity 0.9s cubic-bezier(0.16, 0.8, 0.24, 1),
-    transform 0.9s cubic-bezier(0.16, 0.8, 0.24, 1),
-    filter 0.9s cubic-bezier(0.16, 0.8, 0.24, 1),
-    clip-path 0.9s cubic-bezier(0.16, 0.8, 0.24, 1);
-  will-change: opacity, transform;
-  /* Note: .content-section already carries position:sticky, which is a
-     valid containing block for absolutely-positioned pseudo-elements
-     (e.g. the visualizer scanline below) — no position override needed here. */
+    opacity 0.7s cubic-bezier(0.16, 0.8, 0.24, 1),
+    transform 0.7s cubic-bezier(0.16, 0.8, 0.24, 1);
 }
 
-.reveal.is-visible { opacity: 1; transform: translateY(0); }
+.reveal.is-visible > *,
+.reveal.is-visible > .visualizer-stage-wrapper > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Gentle stagger so blocks arrive in reading order instead of all at once. */
+.reveal.is-visible > *:nth-child(1) { transition-delay: 0.04s; }
+.reveal.is-visible > *:nth-child(2) { transition-delay: 0.14s; }
+.reveal.is-visible > *:nth-child(3) { transition-delay: 0.24s; }
+.reveal.is-visible > *:nth-child(4) { transition-delay: 0.32s; }
+
+/* Grid/list items inside those blocks get their own light stagger. */
+.reveal.is-visible .track-card,
+.reveal.is-visible .tour-date-card,
+.reveal.is-visible .member-card {
+  animation: card-rise 0.6s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+}
+.reveal.is-visible .track-card:nth-child(1),
+.reveal.is-visible .tour-date-card:nth-child(1),
+.reveal.is-visible .member-card:nth-child(1) { animation-delay: 0.10s; }
+.reveal.is-visible .track-card:nth-child(2),
+.reveal.is-visible .tour-date-card:nth-child(2),
+.reveal.is-visible .member-card:nth-child(2) { animation-delay: 0.20s; }
+.reveal.is-visible .track-card:nth-child(3),
+.reveal.is-visible .tour-date-card:nth-child(3),
+.reveal.is-visible .member-card:nth-child(3) { animation-delay: 0.30s; }
+
+/* NOTE: these animate the independent `translate` property, NOT `transform`.
+   An `animation-fill-mode: both` persists its final keyframe, so animating
+   `transform` here would permanently override the member card's mouse-tilt
+   (`transform: perspective() rotateX() rotateY()`) and the track/tour card
+   hover lifts. `translate` composes with `transform` instead of replacing it. */
+@keyframes card-rise {
+  0% { opacity: 0; translate: 0 20px; }
+  100% { opacity: 1; translate: 0 0; }
+}
 
 @keyframes hero-drop-in {
-  0% { opacity: 0; transform: translateY(-24px) scale(0.97); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+  0% { opacity: 0; transform: translateY(-18px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
-.hero-intro { animation: hero-drop-in 1s cubic-bezier(0.16, 0.8, 0.24, 1) both; }
+.hero-intro { animation: hero-drop-in 0.9s cubic-bezier(0.16, 0.8, 0.24, 1) both; }
 
-@keyframes card-rise {
-  0% { opacity: 0; transform: translateY(28px) scale(0.98); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* =========================================
-   PER-SECTION REVEAL VARIANTS
-   The hero establishes a drop-in + the first content section (Instrument)
-   establishes a fade/rise-with-focus baseline. Each section after that
-   evolves the same underlying idea (fade, focus, scale, motion) rather
-   than repeating it verbatim, so the page reads as one journey instead
-   of six copies of the same cue. Every variant still resolves to the
-   plain .reveal/.is-visible pair as its fallback.
-========================================= */
-
-/* Instrument — the baseline, gently evolved with a focus-pull */
-.instrument-section-bg.reveal { transform: translateY(44px); filter: blur(7px); }
-.instrument-section-bg.reveal.is-visible { transform: translateY(0); filter: blur(0); }
-
-/* Setlist — a curtain wipe instead of a fade, apt for "reveal the tracklist" */
-.setlist-section-bg.reveal {
+/* The Instrument (curtain) section is the one exception to the stagger: its
+   content is already on screen in the initial composition, so it is shown
+   immediately rather than waiting to be scrolled into view. */
+.instrument-section-bg.reveal > * {
   opacity: 1;
   transform: none;
-  clip-path: inset(0 0 0 100%);
-  transition: clip-path 1s cubic-bezier(0.16, 0.8, 0.24, 1);
-}
-.setlist-section-bg.reveal.is-visible { clip-path: inset(0 0 0 0%); }
-
-/* Performance — a settle/pop rather than a rise, since the tour cards
-   already carry their own staggered rise inside this section */
-.performance-section-bg.reveal { transform: scale(0.94); }
-.performance-section-bg.reveal.is-visible { transform: scale(1); }
-
-/* Team photo — a slow rack-focus + gentle zoom-out, echoing camera
-   language that fits an "engineering / behind the scenes" section */
-.team-photo-section-bg.reveal { transform: scale(1.045); filter: blur(15px); }
-.team-photo-section-bg.reveal.is-visible { transform: scale(1); filter: blur(0); }
-
-/* Team members — a quiet section fade; the individual cards carry the
-   motion (see member-card-enter below), so the collective doesn't slide */
-.team-members-section-bg.reveal { transform: translateY(18px); }
-.team-members-section-bg.reveal.is-visible { transform: translateY(0); }
-
-@keyframes member-card-enter {
-  0% { opacity: 0; transform: translateY(26px) scale(0.94); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-.team-members-section-bg.reveal.is-visible .member-card {
-  animation: member-card-enter 0.7s cubic-bezier(0.16, 0.8, 0.24, 1) both;
-}
-.team-members-section-bg.reveal.is-visible .members-grid .member-card:nth-child(1) { animation-delay: 0.05s; }
-.team-members-section-bg.reveal.is-visible .members-grid .member-card:nth-child(2) { animation-delay: 0.16s; }
-.team-members-section-bg.reveal.is-visible .members-grid .member-card:nth-child(3) { animation-delay: 0.27s; }
-
-/* Visualizer — a "power-on" cue: the panel settles vertically while a
-   single scanline sweeps through once, instead of a plain fade/rise */
-.visualizer-section-bg.reveal { transform: scaleY(0.88); transform-origin: center top; }
-.visualizer-section-bg.reveal.is-visible {
-  transform: scaleY(1);
-  transition: opacity 0.6s ease, transform 0.9s cubic-bezier(0.16, 0.8, 0.24, 1);
-}
-.visualizer-section-bg.reveal::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0; top: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
-  opacity: 0;
-  pointer-events: none;
-}
-.visualizer-section-bg.reveal.is-visible::after {
-  animation: scan-sweep 1s ease-out both;
-  animation-delay: 0.1s;
-}
-@keyframes scan-sweep {
-  0% { top: 0; opacity: 0.9; }
-  100% { top: 100%; opacity: 0; }
+  transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal, .hero-intro, .track-card, .member-card,
-  .instrument-section-bg.reveal, .setlist-section-bg.reveal, .performance-section-bg.reveal,
-  .team-photo-section-bg.reveal, .team-members-section-bg.reveal, .visualizer-section-bg.reveal,
-  .team-members-section-bg.reveal .member-card, .member-particle {
-    animation: none !important; transition: none !important;
-    opacity: 1 !important; transform: none !important; filter: none !important; clip-path: none !important;
+  .reveal > *,
+  .reveal > .visualizer-stage-wrapper > *,
+  .reveal.is-visible > *,
+  .hero-intro, .track-card, .tour-date-card, .member-card, .member-particle {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    translate: none !important;
   }
-  .visualizer-section-bg.reveal::after { display: none; }
 }
 
 /* =========================================
    1. HERO HEADER SECTION - MASSIVE DIAGONAL
 ========================================= */
 
-.inner-card-wrapper { position: relative; width: 100%; text-align: center; padding: 2rem 0; }
-
-.solid-bg-rect {
-  position: absolute; top: 0; bottom: 0; left: 0; right: 0;
-  background-color: var(--deep-panel); 
-  border: 1px solid rgba(106, 77, 224, 0.28);
-  border-radius: 20px; 
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), inset 0 0 30px rgba(106, 77, 224, 0.14);
-  z-index: 1;           
+.inner-card-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  padding: 0;
 }
 
+/* The hero used to sit inside two nested opaque cards (a deep-panel rect
+   plus a bordered frame), which is what made the logo area read as a
+   separate box from the Instrument Specifications section below it. Both
+   frames are now dissolved — the hero draws straight onto the page surface,
+   so the two areas share one continuous background. */
+.solid-bg-rect { display: none; }
+
 .logo-border {
-  --gx: 50%; --gy: 50%; position: relative; z-index: 2;         
-  border: 2px solid var(--accent-purple); background-color: var(--panel-bg); 
-  width: 90vw;
-  max-width: 1400px;
-  height: 75vh; 
-  min-height: 500px;
-  border-radius: 16px; 
-  box-shadow: 0 0 30px rgba(106, 77, 224, 0.26), 0 0 18px rgba(56, 232, 58, 0.2); 
-  display: block; 
-  margin: 0 auto; 
-  overflow: hidden; 
+  --gx: 50%; --gy: 50%;
+  position: relative;
+  z-index: 2;
+  border: none;
+  background-color: transparent;
+  width: 100%;
+  max-width: 1500px;
+  /* Fills the compact hero container (see .hero-curtain-container) rather
+     than claiming most of the viewport, so the Instrument Specification
+     panel already reads as part of the first screen. */
+  height: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  display: block;
+  margin: 0 auto;
+  padding: 0 clamp(1.5rem, 5vw, 5rem);
+  overflow: visible;
 }
 
 .logo-border::before {
@@ -499,11 +605,13 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 .logo-graphic {
   /* Sized purely against its own already-bounded cell (see .hero-logo-cell),
      with a viewport-relative belt-and-suspenders cap so no combination of
-     PNG aspect ratio + viewport shape can push it past the frame. */
+     PNG aspect ratio + viewport shape can push it past the frame. Caps are
+     deliberately modest now that the hero panel itself is compact
+     (~40vh) rather than near-fullscreen. */
   width: 100%;
   height: 100%;
-  max-width: min(360px, 30vw, 80vh);
-  max-height: min(300px, 34vh, 40vw);
+  max-width: min(220px, 22vw, 70vh);
+  max-height: min(130px, 85%, 16vh);
   object-fit: contain;
   object-position: left top;
   filter: drop-shadow(0 0 15px rgba(56, 232, 58, 0.45));
@@ -527,19 +635,19 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 }
 
 .band-text-line1 {
-  font-size: clamp(1.1rem, 2.6vw, 2.4rem);
+  font-size: clamp(0.8rem, 1.7vw, 1.4rem);
   font-weight: 600;
-  letter-spacing: 8px;
+  letter-spacing: 6px;
   color: var(--text-lavender);
   opacity: 0.9;
   text-shadow: 0 0 14px rgba(161, 114, 214, 0.45);
 }
 
 .band-text-line2 {
-  font-size: clamp(2.6rem, 6.4vw, 6rem);
+  font-size: clamp(1.8rem, 4.2vw, 3.6rem);
   font-weight: 800;
-  letter-spacing: 4px;
-  margin-top: -0.15em;
+  letter-spacing: 3px;
+  margin-top: -0.1em;
   background: linear-gradient(180deg, #ffffff 0%, #ffffff 55%, var(--accent-green) 130%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -549,19 +657,20 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 
 /* Stack vertically on tight mobile displays */
 @media (max-width: 768px) {
-  .hero-logo-cell { top: 11%; left: 50%; transform: translateX(-50%); width: 62%; max-width: 62%; height: 30%; max-height: 30%; justify-content: center; align-items: center; text-align: center; }
-  .hero-text-cell { bottom: 11%; right: 50%; transform: translateX(50%); max-width: 88%; text-align: center; }
+  .hero-curtain-container { height: 34vh; min-height: 240px; max-height: 340px; }
+  .hero-logo-cell { top: 8%; left: 50%; transform: translateX(-50%); width: 70%; max-width: 70%; height: 34%; max-height: 34%; justify-content: center; align-items: center; text-align: center; }
+  .hero-text-cell { bottom: 8%; right: 50%; transform: translateX(50%); max-width: 88%; text-align: center; }
   .band-text-group { align-items: center; }
   .hero-slash-cell { transform: translate(-50%, -50%) rotate(45deg); width: 4px; height: 54%; }
-  .logo-graphic { max-width: min(220px, 46vw, 70vh); max-height: min(180px, 28vh, 46vw); }
+  .logo-graphic { max-width: min(160px, 44vw, 60vh); max-height: min(90px, 85%, 12vh); }
 }
 
 /* Extra headroom safeguard for short/landscape viewports so the logo never
    outgrows the frame vertically */
-@media (max-height: 700px) {
-  .logo-border { height: auto; min-height: 460px; padding: 2.5rem 0; }
+@media (max-height: 620px) {
+  .hero-curtain-container { height: 34vh; min-height: 220px; }
   .hero-logo-cell { height: 40%; max-height: 40%; }
-  .logo-graphic { max-height: min(140px, 22vh, 40vw); }
+  .logo-graphic { max-height: min(90px, 80%, 14vh); }
 }
 
 
@@ -569,10 +678,12 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
    2. INSTRUMENT & SETLIST SECTIONS
 ========================================= */
 
-.instrument-showcase-section { width: 100%; display: grid; grid-template-columns: 1.2fr 1fr; gap: 3.5rem; align-items: center; }
-@media (max-width: 1024px) { .instrument-showcase-section { grid-template-columns: 1fr; } }
+.instrument-showcase-section { width: 100%; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: clamp(1.5rem, 3vw, 3.5rem); align-items: center; }
+@media (max-width: 1024px) { .instrument-showcase-section { grid-template-columns: minmax(0, 1fr); } }
 .instrument-image-container { width: 100%; border-radius: 14px; overflow: hidden; border: 2px solid rgba(107, 70, 239, 0.4); box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6); }
-.instrument-img { width: 100%; height: 100%; max-height: 480px; object-fit: cover; display: block; transition: transform 0.5s ease; }
+/* Height is capped against the viewport as well as in px so the logo +
+   specifications composition still fits the first screen on short windows. */
+.instrument-img { width: 100%; height: 100%; max-height: min(480px, 52dvh); object-fit: cover; display: block; transition: transform 0.5s ease; }
 .instrument-img:hover { transform: scale(1.03); }
 
 .specs-container {
@@ -583,7 +694,7 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 .specs-list li { font-size: 1.1rem; color: #dcd6f7; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(107, 70, 239, 0.2); padding-bottom: 0.75rem; }
 .specs-list li span { font-weight: 600; color: #9d5ece; }
 
-.setlist-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; margin-top: 1.5rem; }
+.setlist-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: clamp(1rem, 2.5vw, 2rem); margin-top: 1.5rem; }
 .track-card {
   background: rgba(25, 18, 42, 0.7); border: 1px solid rgba(107, 70, 239, 0.3); border-radius: 12px;
   padding: 1.75rem; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.3s ease, border-color 0.3s ease;
@@ -602,12 +713,190 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
    3. TEAM SECTION (Photo + Collective)
 ========================================= */
 
-.team-photo-container { position: relative; width: 100%; border-radius: 14px; overflow: hidden; border: 2px solid rgba(106, 77, 224, 0.35); box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6); }
-.team-photo-img { width: 100%; height: auto; max-height: 500px; object-fit: cover; display: block; transition: transform 0.6s ease; }
-.team-photo-container:hover .team-photo-img { transform: scale(1.04); }
+/* Cinemascope presentation (brief section 7): a fixed 2.39:1 frame rather
+   than a conventional rectangular card, with the photo cropped to fit via
+   object-fit instead of being stretched. */
+.team-photo-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2.39 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(106, 77, 224, 0.35);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6);
+  background: #05030a;
+}
+
+.team-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 38%;
+  display: block;
+  /* Baseline sits at a natural photographic depth-of-field (roughly an
+     f/8 feel) rather than a flat/CSS-Gaussian look — subtle, not heavy —
+     and lifts into full focus on hover/tap (section 11). */
+  filter: blur(1.1px) contrast(1.02) saturate(1.03);
+  transform: scale(1.015);
+  transition: filter 0.9s cubic-bezier(0.16, 0.8, 0.24, 1), transform 0.9s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+
+.team-photo-container:hover .team-photo-img,
+.team-photo-container.is-focused .team-photo-img {
+  filter: blur(0) contrast(1.02) saturate(1.03);
+  transform: scale(1.045);
+}
+
 .team-photo-container::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(180deg, transparent 55%, rgba(6, 4, 12, 0.6) 100%);
+  background: linear-gradient(180deg, transparent 45%, rgba(6, 4, 12, 0.55) 100%);
+}
+
+/* Editorial exhibition-label caption, bottom-left — deliberately restrained
+   (small type, wide tracking, low-opacity scrim) so it reads as a photo
+   credit rather than website text printed over the image (section 12). */
+.photo-caption {
+  position: absolute;
+  left: clamp(1rem, 2.5vw, 2rem);
+  bottom: clamp(0.85rem, 2vw, 1.5rem);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.9rem;
+  background: rgba(5, 3, 10, 0.32);
+  backdrop-filter: blur(3px);
+  border-left: 2px solid var(--accent-green);
+  pointer-events: none;
+}
+
+.photo-caption-title {
+  font-size: clamp(0.7rem, 1vw, 0.82rem);
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #f2f0f5;
+  opacity: 0.92;
+}
+
+.photo-caption-sub {
+  font-size: clamp(0.62rem, 0.85vw, 0.7rem);
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--accent-green);
+  opacity: 0.85;
+}
+
+/* =========================================
+   BEHIND THE WORKS — ONE-VIEWPORT COMPOSITION
+   The section is height-bounded and its two columns are balanced so the
+   whole thing resolves inside a single desktop screen. Only this section is
+   touched; the photo treatment (2.39:1 cinemascope, depth-of-field pull,
+   editorial caption) is reused exactly as-is.
+========================================= */
+.team-photo-section-bg {
+  display: flex;
+  align-items: center;
+  /* Fits one screen without hard-clipping: min-height fills the viewport,
+     max-height stops it growing past it, and the padding is trimmed back
+     from the global section value. */
+  min-height: 100svh;
+  max-height: 100svh;
+  padding-top: clamp(1.25rem, 3vh, 2.5rem);
+  padding-bottom: clamp(1.25rem, 3vh, 2.5rem);
+  overflow: hidden;
+}
+
+@supports not (height: 1svh) {
+  .team-photo-section-bg { min-height: 100vh; max-height: 100vh; }
+}
+
+.about-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(1.5rem, 4vw, 4rem);
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* The photo keeps its cinemascope ratio but is now bounded by the column
+   rather than the full page width, so it reads as a composed still instead
+   of a banner that eats the screen. */
+.team-photo-section-bg .team-photo-container {
+  max-height: min(72svh, 620px);
+  margin: 0;
+}
+
+.about-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  min-width: 0;
+}
+
+/* Title scales with viewport height as well as width so it stays inside the
+   budget on short windows. */
+.about-title {
+  font-size: clamp(1.75rem, min(3.4vw, 5.2vh), 3rem);
+  margin: 0 0 0.75rem 0;
+  text-align: left;
+}
+
+.about-title-rule {
+  display: block;
+  width: clamp(70px, 12vw, 130px);
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent-green), transparent);
+  box-shadow: 0 0 10px rgba(56, 232, 58, 0.45);
+  margin-bottom: clamp(0.85rem, 2vh, 1.35rem);
+}
+
+.about-lede {
+  font-size: clamp(0.95rem, min(1.35vw, 2.2vh), 1.3rem);
+  line-height: 1.55;
+  color: var(--text-lavender);
+  letter-spacing: 0.5px;
+  margin: 0 0 clamp(0.9rem, 2vh, 1.5rem) 0;
+  max-width: 46ch;
+}
+
+/* Left-aligned rail treatment in this context (the global centred pill with
+   heavy padding was a large part of the old height). */
+.about-copy .engineering-description {
+  margin: 0;
+  padding: clamp(0.85rem, 2vh, 1.4rem) clamp(1rem, 2vw, 1.6rem);
+  text-align: left;
+  border-left: 3px solid var(--accent-purple);
+  border-right: none;
+  border-radius: 0 8px 8px 0;
+  font-size: clamp(0.88rem, min(1.15vw, 1.9vh), 1.05rem);
+  line-height: 1.6;
+  max-width: 54ch;
+}
+
+/* Single column below the two-column breakpoint, and on short landscape
+   windows where side-by-side would squeeze the copy. Height caps are lifted
+   here — vertical scrolling is expected on mobile. */
+@media (max-width: 1000px), (max-height: 620px) {
+  .team-photo-section-bg {
+    display: block;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+  .about-layout { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+  .team-photo-section-bg .team-photo-container { max-height: none; }
+  .about-copy { align-items: stretch; }
+}
+
+/* On phones the extreme cinemascope crop leaves too little subject, so the
+   frame opens up slightly (unchanged from before this rework). */
+@media (max-width: 700px) {
+  .team-photo-container { aspect-ratio: 16 / 10; }
 }
 
 .member-card {
@@ -632,10 +921,13 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
   overflow: hidden;
 }
 
-/* Signature colors — set the accent variables per member, everything else reads from them */
-.member-card.member-color-red { --accent-active: var(--member-red); --accent-glow: var(--member-red-glow); --accent-glow-strong: var(--member-red-glow-strong); }
-.member-card.member-color-gold { --accent-active: var(--member-gold); --accent-glow: var(--member-gold-glow); --accent-glow-strong: var(--member-gold-glow-strong); }
-.member-card.member-color-blue { --accent-active: var(--member-blue); --accent-glow: var(--member-blue-glow); --accent-glow-strong: var(--member-blue-glow-strong); }
+/* Signature colors — set the accent variables per member, everything else
+   reads from them. Deliberately NOT scoped to .member-card so the same
+   classes can also drive the member modal (see .member-modal-layout), which
+   is how the modal picks up each member's palette. */
+.member-color-red { --accent-active: var(--member-red); --accent-glow: var(--member-red-glow); --accent-glow-strong: var(--member-red-glow-strong); --accent-tint: var(--member-red-tint); --accent-ink: var(--member-red-ink); }
+.member-color-gold { --accent-active: var(--member-gold); --accent-glow: var(--member-gold-glow); --accent-glow-strong: var(--member-gold-glow-strong); --accent-tint: var(--member-gold-tint); --accent-ink: var(--member-gold-ink); }
+.member-color-blue { --accent-active: var(--member-blue); --accent-glow: var(--member-blue-glow); --accent-glow-strong: var(--member-blue-glow-strong); --accent-tint: var(--member-blue-tint); --accent-ink: var(--member-blue-ink); }
 
 /* Hover: a quiet preview in the member's color — not the full unlocked glow */
 .member-card:hover { border-color: var(--accent-active); box-shadow: 0 20px 55px rgba(0, 0, 0, 0.7), 0 0 20px var(--accent-glow); }
@@ -684,8 +976,54 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 .member-card:hover .member-card-sheen { opacity: 1; }
 .member-card-info { position: absolute; left: 0; right: 0; bottom: 0; padding: 1.5rem; text-align: left; transform: translateY(14px); transition: transform 0.35s ease; }
 .member-card:hover .member-card-info { transform: translateY(0); }
-.member-name { font-size: 1.4rem; font-weight: 700; color: #ffffff; margin: 0 0 0.25rem 0; letter-spacing: 1px; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8); }
-.member-role { display: inline-block; font-size: 0.8rem; font-weight: 700; color: #05030a; background: var(--accent-green); padding: 3px 10px; border-radius: 4px; margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 1px; }
+.member-name { font-size: 1.4rem; font-weight: 700; color: #ffffff; margin: 0 0 0.35rem 0; letter-spacing: 1px; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8); }
+
+/* "YABAI" badge.
+   Background is built from the member's own palette — a translucent tint of
+   their accent over the dark card, hairlined in the accent itself, so it
+   reads as part of the card rather than a pasted-on label.
+   The text uses --accent-ink (a near-white wash of the same hue) rather than
+   the raw accent color: on the red member especially, accent-on-tint has poor
+   contrast, whereas the ink stays crisply legible on all three palettes while
+   still reading as that member's color family. */
+.member-role {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent-ink, #f2f0f5);
+  background:
+    linear-gradient(180deg, var(--accent-tint, rgba(255,255,255,0.12)) 0%, rgba(6, 4, 12, 0.55) 100%);
+  border: 1px solid var(--accent-active);
+  border-left: 3px solid var(--accent-active);
+  padding: 3px 12px;
+  border-radius: 3px;
+  margin-bottom: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.85);
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.4);
+  transition: box-shadow 0.4s ease, background-color 0.4s ease;
+}
+.member-card.is-revealed .member-role,
+.member-modal-layout .member-role {
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.4), 0 0 16px var(--accent-glow);
+}
+
+/* Color streak beneath the name — same accent system as the title badge,
+   border and glow, so the whole identity (title / streak / border / glow /
+   particles) reads as one cohesive per-character system (section 17). */
+.member-name-streak {
+  display: block;
+  width: 44px;
+  height: 3px;
+  border-radius: 2px;
+  margin-bottom: 0.7rem;
+  background: linear-gradient(90deg, var(--accent-active), transparent);
+  box-shadow: 0 0 8px var(--accent-active);
+  opacity: 0.55;
+  transition: width 0.4s ease, opacity 0.4s ease;
+}
+.member-card.is-revealed .member-name-streak { width: 74px; opacity: 1; }
 
 /* Small legible cue so the frosted photo reads as interactive, not just unfinished */
 .member-reveal-hint {
@@ -749,6 +1087,127 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 }
 
 /* =========================================
+   LEGENDARY-TIER EDGE ENERGY
+   A restrained "this card is legendary" treatment that hugs the card's
+   EDGES rather than filling it: a soft aurora bloom that breathes just
+   outside the border, plus small orb-like embers that are seeded along the
+   perimeter (see generateEdgeEmbers in TeamMembersSection.jsx) and drift
+   north-east before burning out.
+
+   Deliberately NOT a fire animation — no tall flames, no opaque plume.
+   Everything is low-opacity, in the member's own accent color, and reads as
+   moving energy/embers so it stays inside the site's existing visual
+   language. Only appears once the card is unlocked.
+========================================= */
+.member-card-edge {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.member-card.is-revealed .member-card-edge { opacity: 1; }
+
+/* Aurora bloom that traces the border. Masked to a thin band just around
+   the edge so the middle of the card (the portrait) stays untouched. */
+.member-card-edge::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background:
+    conic-gradient(
+      from var(--edge-angle, 0deg),
+      transparent 0deg,
+      var(--accent-glow-strong) 40deg,
+      var(--accent-active) 70deg,
+      var(--accent-glow-strong) 100deg,
+      transparent 150deg,
+      transparent 360deg
+    );
+  /* Border-band mask: paint the outline only, never the card's interior.
+     Two identical layers clipped to different boxes (content vs border) and
+     composited with xor/exclude leaves just the 2px padding ring. Longhands
+     are used deliberately — the `exclude` keyword is not valid inside the
+     -webkit-mask shorthand. */
+  -webkit-mask-image: linear-gradient(#000, #000), linear-gradient(#000, #000);
+  -webkit-mask-clip: content-box, border-box;
+  -webkit-mask-composite: xor;
+  mask-image: linear-gradient(#000, #000), linear-gradient(#000, #000);
+  mask-clip: content-box, border-box;
+  mask-composite: exclude;
+  filter: blur(1px);
+  opacity: 0.85;
+  animation: edge-sweep 5.5s linear infinite;
+}
+
+/* Soft outer halo, breathing gently — sells "premium" without brightness. */
+.member-card-edge::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  box-shadow: 0 0 22px var(--accent-glow), 0 0 46px var(--accent-glow);
+  opacity: 0.5;
+  animation: edge-breathe 4.2s ease-in-out infinite;
+}
+
+/* The conic gradient's start angle is animated via a registered custom
+   property so the sweep interpolates smoothly instead of stepping. */
+@property --edge-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes edge-sweep {
+  0% { --edge-angle: 0deg; }
+  100% { --edge-angle: 360deg; }
+}
+
+@keyframes edge-breathe {
+  0%, 100% { opacity: 0.38; }
+  50% { opacity: 0.62; }
+}
+
+/* Perimeter embers — small glowing orbs seeded on the card's edges that
+   travel north-east and fade out, regenerating on a loop. */
+.member-edge-ember {
+  position: absolute;
+  left: var(--e-left);
+  top: var(--e-top);
+  width: var(--e-size);
+  height: var(--e-size);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff, var(--accent-active) 55%, transparent 78%);
+  box-shadow: 0 0 8px var(--accent-active), 0 0 16px var(--accent-glow);
+  opacity: 0;
+  filter: blur(0.3px);
+}
+.member-card.is-revealed .member-edge-ember {
+  animation: edge-ember-rise var(--e-dur) ease-out var(--e-delay) infinite;
+}
+
+/* Travel is dominantly up-and-to-the-right (north-east), with a slight
+   sideways wobble mid-flight so the embers feel organic rather than linear. */
+@keyframes edge-ember-rise {
+  0% { transform: translate(0, 0) scale(0.35); opacity: 0; }
+  18% { opacity: var(--e-op); transform: translate(calc(var(--e-tx) * 0.22), calc(var(--e-ty) * 0.22)) scale(1); }
+  55% { transform: translate(calc(var(--e-tx) * 0.62), calc(var(--e-ty) * 0.58)) scale(0.85); opacity: calc(var(--e-op) * 0.6); }
+  100% { transform: translate(var(--e-tx), var(--e-ty)) scale(0.25); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .member-card-edge::before,
+  .member-card-edge::after { animation: none; }
+  .member-edge-ember { display: none; }
+}
+
+/* =========================================
    4. VISUALIZER COMMAND CENTER & FULLSCREEN
 ========================================= */
 
@@ -757,8 +1216,11 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
   width: 100%;
 }
 
+/* Added extra top padding so the core stage is never clipped by overflow */
 .visualizer-dashboard {
-  display: flex; flex-direction: column; gap: 3.5rem; padding: 3rem; background-color: var(--deep-panel);
+  display: flex; flex-direction: column; gap: 2.5rem; 
+  padding: clamp(3rem, 4vw, 4.5rem) clamp(1.5rem, 3vw, 2.5rem) clamp(2rem, 3vw, 3rem); 
+  background-color: var(--deep-panel);
   border-radius: 12px; border: 1px solid rgba(106, 77, 224, 0.35); box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.85);
   position: relative; overflow: hidden !important; 
   -webkit-mask-image: -webkit-radial-gradient(white, black);
@@ -776,43 +1238,111 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 }
 .visualizer-dashboard:hover::after { opacity: 1; }
 
-/* Fullscreen / immersive mode — applied to the wrapper so the dashboard inside
-   simply relayouts rather than unmounting (keeps the 3D canvas alive). */
+/* =========================================
+   IMMERSIVE (TRUE FULLSCREEN) MODE
+   Previously the overlay claimed 100vh but its children were sized off
+   viewport WIDTH, so on any window shorter than the content the dashboard —
+   which carries overflow:hidden — simply cut the piano and frequency graph
+   off at the bottom.
+
+   The fix is a proper height budget rather than a bigger fixed number:
+     * the overlay is exactly one viewport tall (dvh, so mobile browser
+       chrome can't push content out of view),
+     * it is a flex column whose header is fixed-size and whose dashboard
+       takes the REMAINING space (flex:1 + min-height:0 so it may shrink),
+     * inside the dashboard the 3D core stage is the flexible element and
+       the HUD (graph + keys) is fixed-size, so the keys are never what
+       gets sacrificed,
+     * every inner dimension is sized against viewport HEIGHT (svh/dvh)
+       as well as width, so short and ultrawide windows both resolve.
+   The overlay can still scroll as a last resort on extremely small
+   viewports instead of clipping.
+========================================= */
 .visualizer-fullscreen {
   position: fixed;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
   z-index: 99999;
-  padding: 2rem clamp(1rem, 3vw, 3rem);
-  overflow-y: auto;
-  background: radial-gradient(circle at center, var(--bg-1) 0%, var(--bg-2) 100%);
+  padding: clamp(0.5rem, 1.5vh, 1.5rem) clamp(0.75rem, 3vw, 3rem) clamp(0.5rem, 1.5vh, 1.25rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--surface-1);
   display: flex;
   flex-direction: column;
-  animation: visualizer-immersive-in 0.5s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+  gap: clamp(0.25rem, 1vh, 0.75rem);
+  animation: visualizer-immersive-in 0.45s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+}
+
+/* dvh fallback for older browsers. */
+@supports not (height: 100dvh) {
+  .visualizer-fullscreen { height: 100vh; max-height: 100vh; }
 }
 
 @keyframes visualizer-immersive-in {
-  0% { opacity: 0; transform: scale(0.96); }
-  100% { opacity: 1; transform: scale(1); }
+  0% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .visualizer-fullscreen { animation: none; }
 }
 
+/* Header is fixed-size; it must not eat the dashboard's budget. */
+.visualizer-fullscreen .section-header-block {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+}
+.visualizer-fullscreen .section-main-title { font-size: clamp(1.5rem, 4vh, 2.6rem); margin-bottom: 0.25rem; }
+.visualizer-fullscreen .section-subtitle { font-size: clamp(0.8rem, 1.8vh, 1.1rem); }
+.visualizer-fullscreen .visualizer-header-actions { margin-top: 0.25rem; }
+.visualizer-fullscreen .connect-btn,
+.visualizer-fullscreen .visualizer-expand-btn { margin-top: 0.35rem; padding: 8px 20px; }
+
+/* Dashboard consumes exactly the leftover height. min-height:0 is the
+   critical part — without it a flex child refuses to shrink below its
+   content size, which is what forced the overflow in the first place. */
 .visualizer-fullscreen .visualizer-dashboard {
-  flex: 1;
-  justify-content: center;
+  flex: 1 1 auto;
+  min-height: 0;
+  justify-content: space-between;
+  gap: clamp(0.5rem, 2vh, 2rem);
+  padding: clamp(0.75rem, 2vh, 2rem) clamp(0.75rem, 2vw, 2rem);
   cursor: default;
 }
 .visualizer-fullscreen .visualizer-dashboard::after { display: none; }
 
-/* Heightened presence while immersive: bigger core, stronger halo, more depth */
-.visualizer-dashboard.is-immersive .core-container { width: clamp(240px, 30vw, 420px); height: clamp(240px, 30vw, 420px); }
-.visualizer-dashboard.is-immersive .canvas-wrapper { width: clamp(280px, 36vw, 480px); height: clamp(280px, 36vw, 480px); }
-.visualizer-dashboard.is-immersive .halo-svg { filter: drop-shadow(0 0 26px rgba(52, 255, 37, 0.55)); }
+/* The core stage is the flexible region; the HUD below it is not. */
+.visualizer-fullscreen .core-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.visualizer-fullscreen .hud-lower-framed {
+  flex: 0 0 auto;
+}
+
+/* Heightened presence while immersive — but bounded by viewport height so a
+   short window shrinks the core instead of clipping the keyboard. */
+.visualizer-dashboard.is-immersive .core-container {
+  width: min(clamp(160px, 30vw, 420px), 42dvh);
+  height: min(clamp(160px, 30vw, 420px), 42dvh);
+}
+.visualizer-dashboard.is-immersive .canvas-wrapper {
+  width: min(clamp(190px, 36vw, 480px), 48dvh);
+  height: min(clamp(190px, 36vw, 480px), 48dvh);
+}
+.visualizer-dashboard.is-immersive .halo-svg {
+  width: min(clamp(140px, 26vw, 300px), 36dvh);
+  height: min(clamp(140px, 26vw, 300px), 36dvh);
+  filter: drop-shadow(0 0 26px rgba(52, 255, 37, 0.55));
+}
 .visualizer-dashboard.is-immersive { box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.9), 0 0 70px rgba(56, 232, 58, 0.12); }
+
+/* Keys and frequency wings scale with height in immersive mode too to maximize aid */
+.visualizer-fullscreen .piano-keyboard,
+.visualizer-fullscreen .frequency-wing { height: min(clamp(120px, 22vw, 280px), 25dvh); }
+.visualizer-fullscreen .freq-response-graph { height: min(clamp(60px, 12vw, 140px), 18dvh); }
 
 .visualizer-exit-btn {
   position: absolute; top: 0.5rem; right: 0.5rem; z-index: 20;
@@ -822,6 +1352,31 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.25s ease;
 }
 .visualizer-exit-btn:hover { background: rgba(56, 232, 58, 0.13); color: var(--accent-green); border-color: var(--accent-green); transform: scale(1.08) rotate(90deg); }
+
+/* STAND BY... <-> LIVE title crossfade (section 18). Keyed by React (see
+   VisualizerSection.jsx) so each state change remounts and replays this
+   entrance rather than needing a manual class toggle. */
+@keyframes title-state-in {
+  0% { opacity: 0; transform: translateY(6px); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.visualizer-title-anim {
+  animation: title-state-in 0.5s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+}
+.visualizer-title-anim.is-live {
+  color: var(--accent-green);
+  text-shadow: 0 0 22px rgba(56, 232, 58, 0.55), 0 0 6px rgba(56, 232, 58, 0.4);
+}
+.visualizer-title-anim.is-standby {
+  color: var(--text-lavender);
+  opacity: 0.85;
+  text-shadow: none;
+  animation: title-state-in 0.5s cubic-bezier(0.16, 0.8, 0.24, 1) both, standby-pulse 2.6s ease-in-out infinite 0.5s;
+}
+@keyframes standby-pulse { 0%, 100% { opacity: 0.85; } 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) {
+  .visualizer-title-anim, .visualizer-title-anim.is-standby { animation: none; }
+}
 
 .visualizer-header-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 
@@ -859,10 +1414,12 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 /* =========================================
    PERFECT CENTERING FOR CORE & HALO
 ========================================= */
+
+/* Increased internal boundaries slightly so the scaled halo never hits the bounding box */
 .core-container { 
   position: relative; 
-  width: clamp(200px, 32vw, 280px); 
-  height: clamp(200px, 32vw, 280px); 
+  width: clamp(260px, 38vw, 380px); 
+  height: clamp(260px, 38vw, 380px); 
 }
 
 .canvas-wrapper { 
@@ -933,12 +1490,14 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 .side-readout.left { align-items: flex-start; text-align: left; }
 .side-readout.right { align-items: flex-end; text-align: right; }
 
+/* Expanded the keyboard column heavily so it is no longer crushed. */
 .piano-framing-grid {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) 400px minmax(140px, 1fr);
+  grid-template-columns: minmax(80px, 1fr) minmax(300px, 2.5fr) minmax(80px, 1fr);
   align-items: center;
-  gap: 2rem;
+  gap: clamp(1rem, 2.5vw, 2.5rem);
   width: 100%;
+  min-width: 0;
 }
 
 .frequency-wing {
@@ -946,9 +1505,10 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
   flex-direction: row; 
   justify-content: space-between;
   align-items: flex-end; 
-  height: clamp(96px, 18vw, 150px);
+  height: clamp(100px, 20vw, 220px);
+  min-width: 0;
   padding: 8px;
-  gap: 8px;
+  gap: clamp(3px, 0.6vw, 8px);
   background: rgba(0, 0, 0, 0.4);
   border-radius: 8px;
   border: 1px solid rgba(107, 70, 239, 0.2);
@@ -971,11 +1531,62 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
   transition: height 0.1s ease-out, opacity 0.1s ease-out;
 }
 
+/* =========================================
+   FREQUENCY RESPONSE GRAPH — sits above the keys, spans the full 88-key
+   piano range (A0-C8, ~27.5Hz-4186Hz, log-mapped). Reacts to the note
+   being played and decays/reverberates outward on its own (sections 21-22).
+========================================= */
+.freq-response-graph {
+  position: relative;
+  width: 100%;
+  height: clamp(60px, 10vw, 120px);
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 0 4px;
+  margin-bottom: 0.25rem;
+}
+
+.freq-response-bar {
+  flex: 1;
+  min-width: 1px;
+  height: 6%;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(180deg, var(--accent-green) 0%, var(--accent-purple) 100%);
+  transform-origin: bottom center;
+  will-change: height, opacity;
+}
+
+.freq-response-baseline {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: rgba(107, 70, 239, 0.35);
+}
+
+.freq-response-range-label {
+  display: flex;
+  justify-content: space-between;
+  font-family: monospace;
+  font-size: 0.62rem;
+  letter-spacing: 1.5px;
+  color: rgba(163, 245, 201, 0.4);
+  padding: 0 4px;
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+}
+
+/* Keyboard geometry is now proportional, not pixel-pinned: white keys flex
+   evenly and black keys are positioned as percentages (see KEYS_CONFIG in
+   VisualizerSection.jsx). That lets the keyboard shrink gracefully on narrow
+   or short windows while keeping correct note alignment at any size. */
 .keyboard-wrapper { 
   display: flex; 
   flex-direction: column; 
   align-items: center; 
-  width: 400px; 
+  width: 100%;
+  max-width: 600px; /* Removed massive limitation to allow scaling */
+  min-width: 0;
   margin: 0 auto;
 }
 
@@ -983,8 +1594,9 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
   display: flex;
   flex-direction: row;
   position: relative;
-  width: 400px;
-  height: clamp(96px, 18vw, 150px);
+  width: 100%;
+  min-width: 0;
+  height: clamp(100px, 20vw, 220px); /* Dramatically taller height */
   background: rgba(255, 255, 255, 0.02);
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -992,10 +1604,11 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 
 .synth-key { transition: all 0.1s ease-out; box-sizing: border-box; }
 
+/* Eight white keys share the width evenly (12.5% each). */
 .white-key {
   position: relative;
-  width: 50px; 
-  flex: 0 0 50px;
+  flex: 1 1 0;
+  min-width: 0;
   height: 100%;
   background-color: #1a1625;
   border-right: 1px solid #3a3253;
@@ -1003,17 +1616,19 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
   display: flex;
   align-items: flex-end; 
   justify-content: center;
-  padding-bottom: 12px;
+  padding-bottom: clamp(10px, 2vh, 18px); /* Adjusted so letters sit nicely */
   margin: 0;
 }
 
 .white-key:first-of-type { border-left: 1px solid #3a3253; border-bottom-left-radius: 6px; }
 .white-key:last-of-type { border-right: none; border-bottom-right-radius: 6px; }
 
+/* Black keys are 7.5% wide and centred on the white-key boundaries via the
+   percentage `left` values in KEYS_CONFIG. */
 .black-key {
   position: absolute;
   top: 0;
-  width: 30px; 
+  width: 7.5%;
   height: 60%;
   background-color: #0b0716;
   border: 1px solid #6b46ef;
@@ -1025,7 +1640,7 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
   margin: 0;
 }
 
-.note-label { font-size: 0.85rem; font-weight: 700; pointer-events: none; color: #a39abc; }
+.note-label { font-size: clamp(0.6rem, 1.6vw, 0.85rem); font-weight: 700; pointer-events: none; color: #a39abc; }
 
 .white-key::after, .black-key::after {
   content: ''; position: absolute; inset: -16px; border-radius: 50%;
@@ -1097,14 +1712,14 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 .engineering-description p { margin-bottom: 1rem; }
 .engineering-description p:last-child { margin-bottom: 0; }
 
-.members-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 2.5rem; }
+.members-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: clamp(1.25rem, 3vw, 2.5rem); }
 .member-card { aspect-ratio: 3 / 5 !important; }
 .member-card .member-bio { display: none; }
 
 .modal-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(6, 4, 12, 0.85); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; padding: 1.5rem; pointer-events: auto; }
 .modal-open { animation: modal-bg-in 0.4s ease-out forwards; }
 .modal-closing { animation: modal-bg-out 0.3s ease-in forwards; pointer-events: none; }
-.modal-container { position: relative; background: rgba(18, 14, 30, 0.98); border: 1px solid rgba(106, 77, 224, 0.42); border-radius: 16px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.9), 0 0 34px rgba(106, 77, 224, 0.2); width: 100%; max-width: 1000px; max-height: 90vh; overflow-y: auto; padding: 3rem; }
+.modal-container { position: relative; background: rgba(18, 14, 30, 0.98); border: 1px solid rgba(106, 77, 224, 0.42); border-radius: 16px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.9), 0 0 34px rgba(106, 77, 224, 0.2); width: 100%; max-width: 1000px; max-height: 90dvh; overflow-y: auto; overscroll-behavior: contain; padding: clamp(1.25rem, 3vw, 3rem); }
 .modal-container::-webkit-scrollbar { width: 8px; }
 .modal-container::-webkit-scrollbar-track { background: transparent; }
 .modal-container::-webkit-scrollbar-thumb { background: rgba(106, 77, 224, 0.45); border-radius: 4px; }
@@ -1123,7 +1738,10 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 
 /* Instrument Modal Layout */
 .instrument-modal-layout { width: 100%; display: flex; flex-direction: column; align-items: center; }
-.instrument-3d-stage { position: relative; width: 100%; height: 55vh; min-height: 450px; background: radial-gradient(circle at center, rgba(52, 255, 37, 0.05) 0%, transparent 60%); border: 1px dashed rgba(107, 70, 239, 0.3); border-radius: 12px; margin-top: 1rem; }
+/* The old `min-height: 450px` floor could exceed what the modal (max 90dvh)
+   could actually show on short windows, clipping the callouts. Now purely
+   viewport-relative with a small px floor. */
+.instrument-3d-stage { position: relative; width: 100%; height: clamp(240px, 48dvh, 560px); background: radial-gradient(circle at center, rgba(52, 255, 37, 0.05) 0%, transparent 60%); border: 1px dashed rgba(107, 70, 239, 0.3); border-radius: 12px; margin-top: 1rem; }
 .canvas-wrapper-3d { position: absolute; inset: 0; z-index: 1; }
 .callout { position: absolute; display: flex; align-items: center; gap: 12px; z-index: 2; }
 .callout-tl { top: 15%; left: 5%; flex-direction: row-reverse; }
@@ -1137,7 +1755,7 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 
 /* Track Modal Layout */
 .track-modal-layout { display: flex; gap: 3rem; align-items: center; }
-.track-modal-photo { width: 300px; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 12px; border: 2px solid rgba(107, 70, 239, 0.6); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8); }
+.track-modal-photo { width: clamp(180px, 26vw, 300px); flex: 0 0 auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 12px; border: 2px solid rgba(107, 70, 239, 0.6); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8); }
 .track-modal-info { flex: 1; }
 .modal-data-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1rem; }
 .modal-data-list li { font-size: 1.15rem; color: #dcd6f7; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; }
@@ -1148,19 +1766,106 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 @media (max-width: 768px) { .track-modal-layout { flex-direction: column; text-align: center; gap: 2rem; } .track-modal-photo { width: 100%; max-width: 250px; } .track-modal-info { display: flex; flex-direction: column; align-items: center; } .modal-title { text-align: center !important; } .modal-data-list li span { display: block; width: 100%; margin-bottom: 4px; font-size: 0.9rem; } }
 
 /* Member Modal Layout */
-.member-modal-layout { display: flex; gap: 3rem; align-items: stretch; }
-.member-modal-photo { width: 320px; aspect-ratio: 3 / 5; object-fit: cover; border-radius: 12px; border: 2px solid #6b46ef; box-shadow: 0 0 30px rgba(107, 70, 239, 0.3); }
-.member-modal-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
-.modal-bio-text { font-size: 1.1rem; color: #c4bcdc; line-height: 1.7; }
-@media (max-width: 768px) { .member-modal-layout { flex-direction: column; align-items: center; text-align: center; gap: 2rem; } .member-modal-photo { width: 100%; max-width: 280px; } .member-modal-info { align-items: center; } .modal-title { text-align: center !important; } }
+/* Member modal.
+   The layout element itself now carries the member-color-* class, so every
+   accent inside (badge, streak, divider, portrait frame, bio rail) resolves
+   from that one member's palette. The portrait stays the visual anchor: it
+   holds its 3/5 card proportion and is sized against BOTH width and height
+   so it never overflows short or narrow windows. */
+.member-modal-layout {
+  display: flex;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: stretch;
+}
+
+.member-modal-photo {
+  width: clamp(200px, 26vw, 320px);
+  aspect-ratio: 3 / 5;
+  max-height: min(66vh, 560px);
+  object-fit: cover;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  border: 2px solid var(--accent-active, var(--accent-purple));
+  box-shadow: 0 0 30px var(--accent-glow, rgba(107, 70, 239, 0.3)),
+              0 18px 40px rgba(0, 0, 0, 0.6);
+}
+
+.member-modal-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Name hierarchy: badge -> name -> member-colored streak -> divider -> bio */
+.member-modal-name {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 0.75rem 0 0.6rem 0;
+  text-shadow: 0 0 18px var(--accent-glow, rgba(161, 114, 214, 0.42));
+}
+
+.member-modal-streak {
+  display: block;
+  width: 96px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent-active), transparent);
+  box-shadow: 0 0 10px var(--accent-active);
+  margin-bottom: 1.25rem;
+}
+
+/* The divider follows the member's color instead of the global purple. */
+.member-modal-layout .modal-divider {
+  background: linear-gradient(90deg, var(--accent-active), transparent);
+  opacity: 0.45;
+  margin: 0 0 1.25rem 0;
+}
+
+/* Bio: measured line length for readability, with a subtle accent rail on
+   the left tying the copy back to the member's identity. */
+.modal-bio-text {
+  font-size: clamp(1rem, 1.15vw, 1.1rem);
+  color: #cfc7e4;
+  line-height: 1.75;
+  max-width: 60ch;
+  margin: 0;
+  padding-left: clamp(0.85rem, 1.5vw, 1.25rem);
+  border-left: 2px solid var(--accent-tint, rgba(255, 255, 255, 0.12));
+}
+.modal-bio-text p { margin: 0 0 0.9rem 0; }
+.modal-bio-text p:last-child { margin-bottom: 0; }
+
+/* Below the portrait breakpoint the photo leads and the copy stacks under
+   it, still left-aligned so longer bios stay comfortable to read. */
+@media (max-width: 860px) {
+  .member-modal-layout { flex-direction: column; align-items: center; gap: 1.75rem; }
+  .member-modal-photo { width: min(100%, 260px); max-height: 44vh; }
+  .member-modal-info { width: 100%; }
+  .member-modal-name { text-align: left; }
+  .modal-bio-text { max-width: none; }
+}
+
+/* Short/landscape windows: shrink the portrait rather than let the modal
+   grow taller than the viewport. */
+@media (max-height: 620px) {
+  .member-modal-photo { width: clamp(150px, 20vw, 220px); max-height: 62vh; }
+}
 
 /* =========================================
    5. LIVE PERFORMANCE / TOUR SECTION
 ========================================= */
 
 .marquee-strip {
-  width: calc(100% + clamp(4rem, 10vw, 12rem));
-  margin: -1rem clamp(-2rem, -5vw, -6rem) 2.5rem;
+  /* Bleeds to the section's true edges — recalculated to match the new,
+     tighter .content-section horizontal padding (clamp(1.5rem,5vw,5rem))
+     now that the site runs full-bleed (brief section 2/4). */
+  width: calc(100% + clamp(3rem, 10vw, 10rem));
+  margin: -0.5rem clamp(-1.5rem, -5vw, -5rem) 1.5rem;
   overflow: hidden;
   border-top: 1px solid rgba(106, 77, 224, 0.25);
   border-bottom: 1px solid rgba(106, 77, 224, 0.25);
@@ -1195,17 +1900,17 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 .tour-date-list {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.85rem;
 }
 
 .tour-date-card {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 1.5rem;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(106, 77, 224, 0.25);
   border-radius: 10px;
-  padding: 1.5rem clamp(1.25rem, 3vw, 2.5rem);
+  padding: 1.1rem clamp(1rem, 3vw, 2rem);
   transition: transform 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
 }
 

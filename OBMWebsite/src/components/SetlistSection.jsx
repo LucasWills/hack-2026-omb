@@ -20,6 +20,7 @@ export default function SetlistSection() {
   return (
     <>
       <div
+        id="latest-album"
         className={`content-section setlist-section-bg reveal ${isVisible ? 'is-visible' : ''}`}
         ref={ref}
       >

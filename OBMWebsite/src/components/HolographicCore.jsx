@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Octahedron, Torus } from '@react-three/drei';
+import { Octahedron, Torus, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 
 const IDLE_COLOR = new THREE.Color('#6b46ef');
@@ -70,15 +70,25 @@ export default function HolographicCore({ frequency = 0, velocity = 0, isActive 
 
   return (
     <group>
+      {/* Environment reflections give the faces real directional highlights
+          that shift as the shape rotates, instead of a flat metallic sheen —
+          this is most of what reads as genuine 3D depth rather than a
+          drop-shadow-on-a-flat-shape look (brief section 20). */}
+      <Environment preset="city" background={false} />
+
       {/* Core pyramidal diamond, Ramiel-style bipyramid silhouette */}
-      <Octahedron ref={coreRef} args={[1, 0]}>
-        <meshStandardMaterial
+      <Octahedron ref={coreRef} args={[1, 0]} castShadow receiveShadow>
+        <meshPhysicalMaterial
           ref={coreMatRef}
           color={IDLE_COLOR}
           emissive={IDLE_COLOR}
           emissiveIntensity={0.35}
-          metalness={0.85}
-          roughness={0.15}
+          metalness={0.75}
+          roughness={0.32}
+          clearcoat={1}
+          clearcoatRoughness={0.18}
+          envMapIntensity={1.3}
+          reflectivity={0.6}
         />
       </Octahedron>
 

@@ -1,21 +1,52 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Sparkles, ContactShadows } from '@react-three/drei';
 import HolographicCore from './HolographicCore';
 import useScrollReveal from './useScrollReveal';
 
+// Standard 88-key piano range (brief section 22)
+const PIANO_LOW_HZ = 27.5;    // A0
+const PIANO_HIGH_HZ = 4186.01; // C8
+const TOTAL_BARS = 10;
+const FREQ_GRAPH_BARS = 48;
+
+// 10 side-wing bands spanning the full piano range, log-distributed
+const FREQUENCY_BARS = Array.from({ length: TOTAL_BARS }, (_, i) => {
+  const t0 = i / TOTAL_BARS;
+  const t1 = (i + 1) / TOTAL_BARS;
+  const lowFreq = PIANO_LOW_HZ * Math.pow(PIANO_HIGH_HZ / PIANO_LOW_HZ, t0);
+  const highFreq = PIANO_LOW_HZ * Math.pow(PIANO_HIGH_HZ / PIANO_LOW_HZ, t1);
+  const centerFreq = Math.sqrt(lowFreq * highFreq);
+  return { id: i, center: centerFreq, side: i < 5 ? 'left' : 'right' };
+});
+
+// Finer-grained bands for the frequency response graph above the keys —
+// same log distribution across A0-C8 so the graph reflects the instrument's
+// actual playable range rather than an arbitrary spectrum (section 22).
+const FREQ_GRAPH_BANDS = Array.from({ length: FREQ_GRAPH_BARS }, (_, i) => {
+  const t0 = i / FREQ_GRAPH_BARS;
+  const t1 = (i + 1) / FREQ_GRAPH_BARS;
+  const lowFreq = PIANO_LOW_HZ * Math.pow(PIANO_HIGH_HZ / PIANO_LOW_HZ, t0);
+  const highFreq = PIANO_LOW_HZ * Math.pow(PIANO_HIGH_HZ / PIANO_LOW_HZ, t1);
+  return { id: i, center: Math.sqrt(lowFreq * highFreq) };
+});
+
+// `left` is a PERCENTAGE of the keyboard width, not a pixel offset, so the
+// keyboard stays correctly aligned at any size (8 white keys = 12.5% each;
+// each black key is 7.5% wide and centred on a white-key boundary).
 const KEYS_CONFIG = [
   { note: 'C', isBlack: false },
-  { note: 'C#', isBlack: true, left: 35 },
+  { note: 'C#', isBlack: true, left: 8.75 },
   { note: 'D', isBlack: false },
-  { note: 'D#', isBlack: true, left: 85 },
+  { note: 'D#', isBlack: true, left: 21.25 },
   { note: 'E', isBlack: false },
   { note: 'F', isBlack: false },
-  { note: 'F#', isBlack: true, left: 185 },
+  { note: 'F#', isBlack: true, left: 46.25 },
   { note: 'G', isBlack: false },
-  { note: 'G#', isBlack: true, left: 235 },
+  { note: 'G#', isBlack: true, left: 58.75 },
   { note: 'A', isBlack: false },
-  { note: 'A#', isBlack: true, left: 285 },
+  { note: 'A#', isBlack: true, left: 71.25 },
   { note: 'B', isBlack: false },
   { note: 'C', isBlack: false, isHigh: true }
 ];
@@ -49,6 +80,11 @@ export default function VisualizerSection() {
   const currentFreq = useRef(3);
   const targetFreq = useRef(3);
   const phase = useRef(0);
+  // Last actively-played note frequency in Hz, and the DOM/smoothed-value
+  // storage for the frequency response graph above the keys (section 21).
+  const noteFreqHz = useRef(0);
+  const freqBarElsRef = useRef([]);
+  const freqAmpsRef = useRef(new Float32Array(FREQ_GRAPH_BARS));
 
   const connectToUSB = async () => {
     try {
@@ -85,19 +121,7 @@ export default function VisualizerSection() {
     }
   };
 
-  // 10 Frequency Bands spanning the full piano range (27.5 Hz to 4186 Hz logarithmic distribution)
-  const PIANO_LOW_HZ = 27.5;
-  const PIANO_HIGH_HZ = 4186.01;
-  const TOTAL_BARS = 10;
-
-  const frequencyBars = Array.from({ length: TOTAL_BARS }, (_, i) => {
-    const t0 = i / TOTAL_BARS;
-    const t1 = (i + 1) / TOTAL_BARS;
-    const lowFreq = PIANO_LOW_HZ * Math.pow(PIANO_HIGH_HZ / PIANO_LOW_HZ, t0);
-    const highFreq = PIANO_LOW_HZ * Math.pow(PIANO_HIGH_HZ / PIANO_LOW_HZ, t1);
-    const centerFreq = Math.sqrt(lowFreq * highFreq);
-    return { id: i, center: centerFreq, side: i < 5 ? 'left' : 'right' };
-  });
+  const frequencyBars = FREQUENCY_BARS;
 
   const currentOctave = hardwareData.octave !== "---" ? hardwareData.octave : 4;
 
@@ -108,6 +132,7 @@ export default function VisualizerSection() {
     if (freq > 0 && isDataFlowing) {
       const t = Math.max(0, Math.min(1, Math.log2(freq / 27) / Math.log2(4186 / 27)));
       targetFreq.current = 3 + (t * 11);
+      noteFreqHz.current = freq;
     }
   }, [hardwareData.velocity, hardwareData.frequency, isDataFlowing]);
 
@@ -149,6 +174,36 @@ export default function VisualizerSection() {
         }
         pathRef.current.setAttribute('d', d);
       }
+
+      // Frequency response graph (section 21-22): each bar's target height is
+      // how close its band's center frequency sits to the actively-played
+      // note (in semitones), scaled by the same smoothed amplitude envelope
+      // driving the rest of the visualizer. Fast attack / slow release gives
+      // the "reverberates outward, then decays" feel called for in the brief,
+      // and it naturally quiets on its own once a note is released.
+      const bars = freqBarElsRef.current;
+      if (bars.length) {
+        const amps = freqAmpsRef.current;
+        const freqHz = noteFreqHz.current;
+        const activeAmp = currentAmp.current;
+        for (let i = 0; i < FREQ_GRAPH_BARS; i++) {
+          let target = 0.05;
+          if (freqHz > 0 && activeAmp > 0.01) {
+            const semitoneDist = Math.abs(12 * Math.log2(FREQ_GRAPH_BANDS[i].center / freqHz));
+            if (semitoneDist < 14) {
+              target = Math.max(0.05, 1 - semitoneDist / 14) * activeAmp;
+            }
+          }
+          const cur = amps[i];
+          amps[i] = target > cur ? cur + (target - cur) * 0.55 : cur + (target - cur) * 0.08;
+          const el = bars[i];
+          if (el) {
+            el.style.height = `${Math.max(5, amps[i] * 100)}%`;
+            el.style.opacity = (0.3 + amps[i] * 0.7).toFixed(2);
+          }
+        }
+      }
+
       frameId = requestAnimationFrame(loop);
     };
     loop();
@@ -157,48 +212,54 @@ export default function VisualizerSection() {
 
   const normalizedAmp = isDataFlowing ? Math.min(1, (hardwareData.velocity || 127) / 127) : 0;
 
-  return (
-    <div
-      className={`content-section visualizer-section-bg reveal ${isVisible ? 'is-visible' : ''} ${isExpanded ? 'is-immersive-active' : ''}`}
-      ref={ref}
-    >
-      <div className={isExpanded ? 'visualizer-fullscreen' : 'visualizer-stage-wrapper'}>
-        {isExpanded && (
-          <button
-            className="visualizer-exit-btn"
-            onClick={() => setIsExpanded(false)}
-            aria-label="Exit immersive mode"
-          >
-            ×
-          </button>
-        )}
-
-        <div className="section-header-block">
-          <h2 className="section-main-title">Live Telemetry & Frequency Analyzer</h2>
-          <p className="section-subtitle">
-            Status: {isConnected ? <span className="status-live">LINK ACTIVE (A0 - C8, 88-Key Range)</span> : <span className="status-down">DISCONNECTED</span>}
-          </p>
-
-          <div className="visualizer-header-actions">
-            {!isConnected && (
-              <button className="connect-btn" onClick={connectToUSB}>
-                CONNECT HARDWARE
-              </button>
-            )}
-            <button
-              className="visualizer-expand-btn"
-              onClick={() => setIsExpanded((v) => !v)}
-            >
-              {isExpanded ? 'EXIT IMMERSIVE MODE' : 'ENTER IMMERSIVE MODE'}
-            </button>
-          </div>
-        </div>
-
-        <div
-          className={`visualizer-dashboard ${isExpanded ? 'is-immersive' : ''}`}
-          ref={dashboardRef}
-          onClick={() => { if (!isExpanded) setIsExpanded(true); }}
+  // The dashboard itself (header + 3D core + HUD) is identical whether it's
+  // sitting inline on the page or filling the viewport — only its container
+  // changes between the two. Built once and mounted in exactly one place
+  // per render (see the portal in the final return below), so the Canvas
+  // never has two live instances at once.
+  const dashboardContent = (
+    <>
+      {isExpanded && (
+        <button
+          className="visualizer-exit-btn"
+          onClick={() => setIsExpanded(false)}
+          aria-label="Exit immersive mode"
         >
+          ×
+        </button>
+      )}
+
+      <div className="section-header-block">
+        <h2
+          key={isConnected ? 'live' : 'standby'}
+          className={`section-main-title visualizer-title-anim ${isConnected ? 'is-live' : 'is-standby'}`}
+        >
+          {isConnected ? 'LIVE' : 'STAND BY...'}
+        </h2>
+        <p className="section-subtitle">
+          Status: {isConnected ? <span className="status-live">LINK ACTIVE (A0 - C8, 88-Key Range)</span> : <span className="status-down">DISCONNECTED</span>}
+        </p>
+
+        <div className="visualizer-header-actions">
+          {!isConnected && (
+            <button className="connect-btn" onClick={connectToUSB}>
+              CONNECT HARDWARE
+            </button>
+          )}
+          <button
+            className="visualizer-expand-btn"
+            onClick={() => setIsExpanded((v) => !v)}
+          >
+            {isExpanded ? 'EXIT IMMERSIVE MODE' : 'ENTER IMMERSIVE MODE'}
+          </button>
+        </div>
+      </div>
+
+      <div
+        className={`visualizer-dashboard ${isExpanded ? 'is-immersive' : ''}`}
+        ref={dashboardRef}
+        onClick={() => { if (!isExpanded) setIsExpanded(true); }}
+      >
 
         {/* TOP: Core and frequency-dependent SVG wobble halo */}
         <div className="core-stage">
@@ -225,9 +286,18 @@ export default function VisualizerSection() {
             </div>
             
             <div className="canvas-wrapper">
-              <Canvas camera={{ position: [0, 0, isExpanded ? 6.5 : 5.5], fov: 50 }}>
-                <ambientLight intensity={0.5} />
-                <pointLight position={[10, 10, 10]} intensity={2.5} color="#ffffff" />
+              <Canvas shadows camera={{ position: [0, 0, isExpanded ? 6.5 : 5.5], fov: 50 }}>
+                <ambientLight intensity={0.35} />
+                {/* Key light: a real directional light with shadows enabled so the
+                    octahedron's faces actually shade against each other instead of
+                    each catching an even, shadowless highlight (brief section 20). */}
+                <directionalLight
+                  position={[6, 8, 6]}
+                  intensity={2.2}
+                  color="#ffffff"
+                  castShadow
+                  shadow-mapSize={[512, 512]}
+                />
                 <pointLight
                   position={[-6, -4, -6]}
                   intensity={isDataFlowing ? 3 : 1}
@@ -308,6 +378,25 @@ export default function VisualizerSection() {
             </div>
           </div>
 
+          {/* Frequency response graph — reacts to the note being played,
+              mapped across the full 88-key range (A0-C8). Sits directly
+              above the keys rather than off to the side (section 21-22). */}
+          <div className="freq-response-range-label">
+            <span>A0 · 27.5HZ</span>
+            <span>FREQUENCY RESPONSE</span>
+            <span>C8 · 4186HZ</span>
+          </div>
+          <div className="freq-response-graph" aria-hidden="true">
+            {FREQ_GRAPH_BANDS.map((band, i) => (
+              <div
+                className="freq-response-bar"
+                key={band.id}
+                ref={(el) => { freqBarElsRef.current[i] = el; }}
+              />
+            ))}
+            <div className="freq-response-baseline"></div>
+          </div>
+
           {/* Core Framing Architecture: Left 5 Vertical Bars | Piano | Right 5 Vertical Bars */}
           <div className="piano-framing-grid">
             
@@ -364,7 +453,7 @@ export default function VisualizerSection() {
                       <div 
                         key={index} 
                         className={`synth-key black-key ${isActive ? 'key-active' : ''}`} 
-                        style={{ left: `${k.left}px` }}
+                        style={{ left: `${k.left}%` }}
                       />
                     );
                   } else {
@@ -411,7 +500,34 @@ export default function VisualizerSection() {
         </div>
 
         </div>
-      </div>
+    </>
+  );
+
+  // Rendered in exactly one place: inline within the section while at rest,
+  // or portaled straight onto document.body while immersive. Portaling is
+  // what guarantees a genuine 100vw x 100vh overlay — an ancestor further up
+  // the tree carrying so much as `transform: translateY(0)` (which several
+  // of the scroll-reveal states above do) silently becomes the containing
+  // block for a `position: fixed` descendant, which is what was trapping
+  // immersive mode inside the section before (brief section 19).
+  return (
+    <div
+      id="stage"
+      className={`content-section visualizer-section-bg reveal ${isVisible ? 'is-visible' : ''} ${isExpanded ? 'is-immersive-active' : ''}`}
+      ref={ref}
+    >
+      {!isExpanded && (
+        <div className="visualizer-stage-wrapper">
+          {dashboardContent}
+        </div>
+      )}
+
+      {isExpanded && createPortal(
+        <div className="visualizer-fullscreen">
+          {dashboardContent}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

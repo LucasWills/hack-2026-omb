@@ -21,10 +21,10 @@ function PlaceholderInstrument3D() {
 
 // Data-driven content
 const instrumentSpecs = {
-  dimensions: "840 × 320 × 65 mm",
-  material: "Treated Hardwood / Composite",
-  poweredBy: "Active Li-Ion Preamp Core",
-  speakers: "Dual Neodymium Drivers"
+  bodyMaterial: "PLA / Birch Wood",
+  configuration: "13-Key Layout",
+  electronics: "Active Amplifier / 150MHz MCU",
+  finish: "Raw / Glossy"
 };
 
 export default function InstrumentSection() {
@@ -34,6 +34,7 @@ export default function InstrumentSection() {
   return (
     <>
       <div
+        id="featured-instrument"
         className={`content-section instrument-section-bg reveal ${isVisible ? 'is-visible' : ''}`}
         ref={ref}
       >
@@ -54,10 +55,10 @@ export default function InstrumentSection() {
           <div className="specs-container">
             <h3 className="specs-title">Instrument Specifications</h3>
             <ul className="specs-list">
-              <li><span>Configuration:</span> Custom Multi-Scale Build</li>
-              <li><span>Body Material:</span> {instrumentSpecs.material}</li>
-              <li><span>Electronics:</span> Active Preamp & Custom Pickups</li>
-              <li><span>Finish:</span> Matte Dark Cyberpunk Finish</li>
+              <li><span>Body Material:</span> {instrumentSpecs.bodyMaterial}</li>
+              <li><span>Configuration:</span> {instrumentSpecs.configuration}</li>
+              <li><span>Electronics:</span> {instrumentSpecs.electronics}</li>
+              <li><span>Finish:</span> {instrumentSpecs.finish}</li>
             </ul>
           </div>
         </div>
@@ -76,9 +77,11 @@ export default function InstrumentSection() {
               </Canvas>
             </div>
 
-            {/* Technical Callouts */}
+            {/* Technical Callouts — same four specs as the panel above, framed
+                as short schematic labels for the rotating shape rather than
+                repeating the panel's full wording (see brief section 5). */}
             <div className="callout callout-tl">
-              <span className="callout-text">Dimensions<br/>{instrumentSpecs.dimensions}</span>
+              <span className="callout-text">Body<br/>{instrumentSpecs.bodyMaterial}</span>
               <div className="callout-line"></div>
               <div className="callout-dot"></div>
             </div>
@@ -86,11 +89,11 @@ export default function InstrumentSection() {
             <div className="callout callout-tr">
               <div className="callout-dot"></div>
               <div className="callout-line"></div>
-              <span className="callout-text">Material<br/>{instrumentSpecs.material}</span>
+              <span className="callout-text">Layout<br/>{instrumentSpecs.configuration}</span>
             </div>
 
             <div className="callout callout-bl">
-              <span className="callout-text">Powered By<br/>{instrumentSpecs.poweredBy}</span>
+              <span className="callout-text">Drive<br/>{instrumentSpecs.electronics}</span>
               <div className="callout-line"></div>
               <div className="callout-dot"></div>
             </div>
@@ -98,7 +101,7 @@ export default function InstrumentSection() {
             <div className="callout callout-br">
               <div className="callout-dot"></div>
               <div className="callout-line"></div>
-              <span className="callout-text">Output<br/>{instrumentSpecs.speakers}</span>
+              <span className="callout-text">Finish<br/>{instrumentSpecs.finish}</span>
             </div>
           </div>
         </div>

@@ -1,6 +1,15 @@
 import { useRef, useEffect, useState } from 'react';
 import logo from '../assets/one_man_band_trnsp-2.png';
 
+// Anchor targets match the ids set on each section component.
+const NAV_ITEMS = [
+  { label: 'Featured Instrument', target: 'featured-instrument' },
+  { label: 'Latest Album', target: 'latest-album' },
+  { label: 'Live Shows', target: 'live-shows' },
+  { label: 'About', target: 'about' },
+  { label: 'Stage', target: 'stage' },
+];
+
 export default function HeroHeader() {
   const borderRef = useRef(null);
   const [scrollY, setScrollY] = useState(0);
@@ -22,9 +31,29 @@ export default function HeroHeader() {
     node.style.setProperty('--gy', `${gy}%`);
   };
 
-  // Calculate dynamic styles for the curtain effect (fades out completely after 600px of scroll)
-  const fadeOpacity = Math.max(1 - scrollY / 600, 0);
-  const fadeScale = Math.max(1 - scrollY / 4000, 0.92);
+  // Smooth scroll to a section. Handled in JS (rather than relying only on
+  // href anchors) so we can honour prefers-reduced-motion and still update
+  // the URL hash for shareable/bookmarkable links.
+  const handleNavClick = (e, target) => {
+    e.preventDefault();
+    const node = document.getElementById(target);
+    if (!node) return;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    node.scrollIntoView({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'start',
+    });
+    if (window.history?.replaceState) {
+      window.history.replaceState(null, '', `#${target}`);
+    }
+  };
+
+  // Calculate dynamic styles for the curtain effect. The hero panel is now
+  // compact (~40vh, see .hero-curtain-container) so it fades out over a
+  // shorter scroll distance than before, matching how quickly the
+  // Instrument Specification panel now rises to cover it.
+  const fadeOpacity = Math.max(1 - scrollY / 420, 0);
+  const fadeScale = Math.max(1 - scrollY / 3000, 0.92);
 
   return (
     <div 
@@ -60,6 +89,23 @@ export default function HeroHeader() {
           </div>
 
         </div>
+
+        {/* Section navigation — sits directly under the title/logo block.
+            Deliberately quiet: small monospace caps, hairline separators and
+            the existing green accent only on hover/focus, so it never
+            competes with the wordmark above it. */}
+        <nav className="hero-nav" aria-label="Section navigation">
+          {NAV_ITEMS.map((item) => (
+            <a
+              key={item.target}
+              href={`#${item.target}`}
+              className="hero-nav-link"
+              onClick={(e) => handleNavClick(e, item.target)}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
       </div>
     </div>
   );
