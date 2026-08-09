@@ -52,7 +52,8 @@ export default function HeroHeader() {
             
             <div className="hero-text-cell">
               <div className="band-text-group">
-                <span className="band-text">ONE MAN BAND</span>
+                <span className="band-text band-text-line1">ONE MAN</span>
+                <span className="band-text band-text-line2">BAND</span>
               </div>
             </div>
 

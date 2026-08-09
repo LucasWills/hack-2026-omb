@@ -11,7 +11,8 @@ export default function Modal({ isOpen, onClose, children }) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'; // Lock scrolling
-      
+      document.body.classList.add('immersive-active'); // Recede the site behind the modal (shared layer)
+
       const handleEsc = (e) => {
         if (e.key === 'Escape') onClose();
       };
@@ -19,10 +20,12 @@ export default function Modal({ isOpen, onClose, children }) {
       
       return () => {
         document.body.style.overflow = ''; // Restore scrolling
+        document.body.classList.remove('immersive-active');
         window.removeEventListener('keydown', handleEsc);
       };
     } else {
       document.body.style.overflow = '';
+      document.body.classList.remove('immersive-active');
     }
   }, [isOpen, onClose]);
 

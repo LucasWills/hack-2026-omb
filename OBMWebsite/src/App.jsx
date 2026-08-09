@@ -9,6 +9,10 @@ import VisualizerSection from './components/VisualizerSection';
 export default function App() {
   return (
     <div className="bg-strip">
+      {/* Shared dimming layer for any fullscreen/immersive feature — see
+          .immersive-active toggling in Modal.jsx and VisualizerSection.jsx */}
+      <div className="immersive-dim-overlay" aria-hidden="true"></div>
+
       <div className="main-layout-container">
         <HeroHeader />
         

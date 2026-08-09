@@ -6,11 +6,12 @@ import * as THREE from 'three';
 const IDLE_COLOR = new THREE.Color('#6b46ef');
 const ACTIVE_COLOR = new THREE.Color('#34ff25');
 
-export default function HolographicCore({ frequency = 0, velocity = 0, isActive = false }) {
+export default function HolographicCore({ frequency = 0, velocity = 0, isActive = false, immersive = false }) {
   const coreRef = useRef();
   const shellRef = useRef();
   const ringARef = useRef();
   const ringBRef = useRef();
+  const ringCRef = useRef();
   const coreMatRef = useRef();
   const shellMatRef = useRef();
   const liveColor = useRef(IDLE_COLOR.clone());
@@ -33,6 +34,8 @@ export default function HolographicCore({ frequency = 0, velocity = 0, isActive 
     // Halo rings spin independently, like a rotating targeting array
     if (ringARef.current) ringARef.current.rotation.z += (0.3 + amp * 0.7) * delta;
     if (ringBRef.current) ringBRef.current.rotation.x += (0.25 + amp * 0.55) * delta;
+    // Wide outer ring only really reads once the core is large on screen
+    if (ringCRef.current) ringCRef.current.rotation.y -= (0.15 + amp * 0.35) * delta;
 
     // Pulse scale driven directly by the incoming frequency/velocity
     if (isActive) {
@@ -91,6 +94,14 @@ export default function HolographicCore({ frequency = 0, velocity = 0, isActive 
       <Torus ref={ringBRef} args={[2.15, 0.006, 8, 64]} rotation={[0, 0, Math.PI / 3]}>
         <meshBasicMaterial color="#34ff25" transparent opacity={0.35} />
       </Torus>
+
+      {/* Wide outer ring — extra layering for a stronger sense of depth,
+          especially once the core is scaled up in immersive mode */}
+      {immersive && (
+        <Torus ref={ringCRef} args={[2.6, 0.005, 8, 72]} rotation={[Math.PI / 5, Math.PI / 6, 0]}>
+          <meshBasicMaterial color="#9d5ece" transparent opacity={0.28} />
+        </Torus>
+      )}
     </group>
   );
 }

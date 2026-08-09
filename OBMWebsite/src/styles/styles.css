@@ -115,6 +115,29 @@ body {
 }
 
 /* =========================================
+   REUSABLE IMMERSIVE-RECEDE LAYER
+   A single shared dimming layer any fullscreen/immersive feature can
+   trigger by toggling body.immersive-active (see Modal.jsx and
+   VisualizerSection.jsx). Keeps "website recedes behind the immersive
+   layer" consistent instead of every feature rolling its own darkening.
+   Deliberately NOT nested inside anything with transform/filter so it
+   never fights with fixed-position overlays for a containing block.
+========================================= */
+.immersive-dim-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(4, 3, 8, 0.16);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+body.immersive-active .immersive-dim-overlay { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .immersive-dim-overlay { transition: none; }
+}
+
+/* =========================================
    CURTAIN EFFECT CLASSES & HERO CENTERING
 ========================================= */
 
@@ -194,6 +217,16 @@ body {
   top: clamp(1.25rem, 3.5vw, 2.75rem);
 }
 
+/* backdrop-filter (like transform/filter/will-change:transform) creates a
+   CSS containing block for position:fixed descendants. That silently trapped
+   the visualizer's "fullscreen" immersive overlay inside this section's own
+   box instead of the real viewport. Stripping just the filter — not the
+   sticky positioning — while immersive mode is active is the actual fix;
+   see .visualizer-fullscreen / .content-section.is-immersive-active below. */
+.content-section.is-immersive-active {
+  backdrop-filter: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .content-section { position: relative; top: auto; }
 }
@@ -238,8 +271,15 @@ body {
 .reveal {
   opacity: 0;
   transform: translateY(48px);
-  transition: opacity 0.9s cubic-bezier(0.16, 0.8, 0.24, 1), transform 0.9s cubic-bezier(0.16, 0.8, 0.24, 1);
+  transition:
+    opacity 0.9s cubic-bezier(0.16, 0.8, 0.24, 1),
+    transform 0.9s cubic-bezier(0.16, 0.8, 0.24, 1),
+    filter 0.9s cubic-bezier(0.16, 0.8, 0.24, 1),
+    clip-path 0.9s cubic-bezier(0.16, 0.8, 0.24, 1);
   will-change: opacity, transform;
+  /* Note: .content-section already carries position:sticky, which is a
+     valid containing block for absolutely-positioned pseudo-elements
+     (e.g. the visualizer scanline below) — no position override needed here. */
 }
 
 .reveal.is-visible { opacity: 1; transform: translateY(0); }
@@ -256,10 +296,88 @@ body {
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* =========================================
+   PER-SECTION REVEAL VARIANTS
+   The hero establishes a drop-in + the first content section (Instrument)
+   establishes a fade/rise-with-focus baseline. Each section after that
+   evolves the same underlying idea (fade, focus, scale, motion) rather
+   than repeating it verbatim, so the page reads as one journey instead
+   of six copies of the same cue. Every variant still resolves to the
+   plain .reveal/.is-visible pair as its fallback.
+========================================= */
+
+/* Instrument — the baseline, gently evolved with a focus-pull */
+.instrument-section-bg.reveal { transform: translateY(44px); filter: blur(7px); }
+.instrument-section-bg.reveal.is-visible { transform: translateY(0); filter: blur(0); }
+
+/* Setlist — a curtain wipe instead of a fade, apt for "reveal the tracklist" */
+.setlist-section-bg.reveal {
+  opacity: 1;
+  transform: none;
+  clip-path: inset(0 0 0 100%);
+  transition: clip-path 1s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+.setlist-section-bg.reveal.is-visible { clip-path: inset(0 0 0 0%); }
+
+/* Performance — a settle/pop rather than a rise, since the tour cards
+   already carry their own staggered rise inside this section */
+.performance-section-bg.reveal { transform: scale(0.94); }
+.performance-section-bg.reveal.is-visible { transform: scale(1); }
+
+/* Team photo — a slow rack-focus + gentle zoom-out, echoing camera
+   language that fits an "engineering / behind the scenes" section */
+.team-photo-section-bg.reveal { transform: scale(1.045); filter: blur(15px); }
+.team-photo-section-bg.reveal.is-visible { transform: scale(1); filter: blur(0); }
+
+/* Team members — a quiet section fade; the individual cards carry the
+   motion (see member-card-enter below), so the collective doesn't slide */
+.team-members-section-bg.reveal { transform: translateY(18px); }
+.team-members-section-bg.reveal.is-visible { transform: translateY(0); }
+
+@keyframes member-card-enter {
+  0% { opacity: 0; transform: translateY(26px) scale(0.94); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.team-members-section-bg.reveal.is-visible .member-card {
+  animation: member-card-enter 0.7s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+}
+.team-members-section-bg.reveal.is-visible .members-grid .member-card:nth-child(1) { animation-delay: 0.05s; }
+.team-members-section-bg.reveal.is-visible .members-grid .member-card:nth-child(2) { animation-delay: 0.16s; }
+.team-members-section-bg.reveal.is-visible .members-grid .member-card:nth-child(3) { animation-delay: 0.27s; }
+
+/* Visualizer — a "power-on" cue: the panel settles vertically while a
+   single scanline sweeps through once, instead of a plain fade/rise */
+.visualizer-section-bg.reveal { transform: scaleY(0.88); transform-origin: center top; }
+.visualizer-section-bg.reveal.is-visible {
+  transform: scaleY(1);
+  transition: opacity 0.6s ease, transform 0.9s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+.visualizer-section-bg.reveal::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+.visualizer-section-bg.reveal.is-visible::after {
+  animation: scan-sweep 1s ease-out both;
+  animation-delay: 0.1s;
+}
+@keyframes scan-sweep {
+  0% { top: 0; opacity: 0.9; }
+  100% { top: 100%; opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .reveal, .hero-intro, .track-card, .member-card {
-    animation: none !important; transition: none !important; opacity: 1 !important; transform: none !important;
+  .reveal, .hero-intro, .track-card, .member-card,
+  .instrument-section-bg.reveal, .setlist-section-bg.reveal, .performance-section-bg.reveal,
+  .team-photo-section-bg.reveal, .team-members-section-bg.reveal, .visualizer-section-bg.reveal,
+  .team-members-section-bg.reveal .member-card, .member-particle {
+    animation: none !important; transition: none !important;
+    opacity: 1 !important; transform: none !important; filter: none !important; clip-path: none !important;
   }
+  .visualizer-section-bg.reveal::after { display: none; }
 }
 
 /* =========================================
@@ -306,21 +424,25 @@ body {
 
 .hero-logo-cell {
   position: absolute;
-  top: 10%;
+  top: 8%;
   left: 6%;
-  max-width: 40%; /* Restricts the box so it never crosses the center line */
-  max-height: 42%; /* Keeps the logo's own height inside the frame regardless of aspect ratio */
+  width: 44%;
+  max-width: 44%; /* Restricts the box so it never crosses the center line */
+  height: 46%;
+  max-height: 46%; /* Keeps the logo's own height inside the frame regardless of aspect ratio */
   display: flex;
   align-items: flex-start;
+  justify-content: flex-start;
   text-align: left;
+  overflow: visible;
   z-index: 3;
 }
 
 .hero-text-cell {
   position: absolute;
-  bottom: 10%;
+  bottom: 8%;
   right: 6%;
-  max-width: 45%; /* Restricts the box so it never crosses the center line */
+  max-width: 46%; /* Restricts the box so it never crosses the center line */
   text-align: right;
   z-index: 3;
 }
@@ -374,38 +496,72 @@ body {
   display: none; 
 }
 
-.logo-graphic { 
-  width: 100%; 
-  max-width: clamp(150px, 20vw, 360px);
-  max-height: 36vh;
-  height: auto;
+.logo-graphic {
+  /* Sized purely against its own already-bounded cell (see .hero-logo-cell),
+     with a viewport-relative belt-and-suspenders cap so no combination of
+     PNG aspect ratio + viewport shape can push it past the frame. */
+  width: 100%;
+  height: 100%;
+  max-width: min(360px, 30vw, 80vh);
+  max-height: min(300px, 34vh, 40vw);
   object-fit: contain;
-  filter: drop-shadow(0 0 15px rgba(56, 232, 58, 0.45)); 
+  object-position: left top;
+  filter: drop-shadow(0 0 15px rgba(56, 232, 58, 0.45));
 }
 
-.band-text { 
-  display: block; 
-  font-size: clamp(2rem, 5vw, 5rem); 
-  font-weight: 800; 
-  letter-spacing: 6px; 
-  color: #ffffff; 
-  text-shadow: 0 0 20px rgba(161, 114, 214, 0.65); 
+/* Layered, intentionally-composed wordmark rather than a single line:
+   "ONE MAN" sits smaller and lighter above the anchor word "BAND",
+   which reads larger, bolder, and closer to the slash. */
+.band-text-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: clamp(0.1rem, 0.6vw, 0.4rem);
+}
+
+.band-text {
+  display: block;
+  color: #ffffff;
+  text-shadow: 0 0 20px rgba(161, 114, 214, 0.65);
   white-space: nowrap;
+}
+
+.band-text-line1 {
+  font-size: clamp(1.1rem, 2.6vw, 2.4rem);
+  font-weight: 600;
+  letter-spacing: 8px;
+  color: var(--text-lavender);
+  opacity: 0.9;
+  text-shadow: 0 0 14px rgba(161, 114, 214, 0.45);
+}
+
+.band-text-line2 {
+  font-size: clamp(2.6rem, 6.4vw, 6rem);
+  font-weight: 800;
+  letter-spacing: 4px;
+  margin-top: -0.15em;
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 55%, var(--accent-green) 130%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 26px rgba(56, 232, 58, 0.4);
 }
 
 /* Stack vertically on tight mobile displays */
 @media (max-width: 768px) {
-  .hero-logo-cell { top: 13%; left: 50%; transform: translateX(-50%); max-width: 82%; max-height: 32%; justify-content: center; text-align: center; }
-  .hero-text-cell { bottom: 13%; right: 50%; transform: translateX(50%); max-width: 82%; text-align: center; }
-  .hero-slash-cell { transform: translate(-50%, -50%) rotate(45deg); width: 4px; height: 58%; }
-  .logo-graphic { max-width: clamp(120px, 34vw, 220px); max-height: 24vh; }
+  .hero-logo-cell { top: 11%; left: 50%; transform: translateX(-50%); width: 62%; max-width: 62%; height: 30%; max-height: 30%; justify-content: center; align-items: center; text-align: center; }
+  .hero-text-cell { bottom: 11%; right: 50%; transform: translateX(50%); max-width: 88%; text-align: center; }
+  .band-text-group { align-items: center; }
+  .hero-slash-cell { transform: translate(-50%, -50%) rotate(45deg); width: 4px; height: 54%; }
+  .logo-graphic { max-width: min(220px, 46vw, 70vh); max-height: min(180px, 28vh, 46vw); }
 }
 
 /* Extra headroom safeguard for short/landscape viewports so the logo never
    outgrows the frame vertically */
 @media (max-height: 700px) {
-  .logo-border { height: auto; min-height: 460px; }
-  .logo-graphic { max-height: 24vh; }
+  .logo-border { height: auto; min-height: 460px; padding: 2.5rem 0; }
+  .hero-logo-cell { height: 40%; max-height: 40%; }
+  .logo-graphic { max-height: min(140px, 22vh, 40vw); }
 }
 
 
@@ -457,10 +613,23 @@ body {
 .member-card {
   --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%;
   --accent-active: #34ff25; --accent-glow: rgba(52, 255, 37, 0.28); --accent-glow-strong: rgba(52, 255, 37, 0.55);
-  position: relative; border-radius: 16px; overflow: hidden; 
+  position: relative; border-radius: 16px;
+  /* Overflow is intentionally visible here — the clipping now lives on
+     .member-card-visual so the particle field can bleed past the card's
+     own edges into the surrounding space (see section 7 of the brief). */
   border: 1px solid rgba(107, 70, 239, 0.35); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
   transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
   transition: transform 0.25s ease-out, border-color 0.4s ease, box-shadow 0.5s ease;
+}
+
+/* Clipped visual layer: photo, scrim, sheen, hint and info all live in
+   here so the rounded corners still read cleanly — only the particle
+   field (a sibling) is allowed to escape the card's silhouette. */
+.member-card-visual {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
 }
 
 /* Signature colors — set the accent variables per member, everything else reads from them */
@@ -489,14 +658,15 @@ body {
   .member-card.is-revealed { animation: none; box-shadow: 0 20px 55px rgba(0, 0, 0, 0.7), 0 0 26px var(--accent-glow-strong), 0 0 52px var(--accent-glow); }
 }
 
-/* Photo starts frosted/blurred — a hint that something is hidden, not the full picture */
+/* Photo starts in a light soft-focus — a hint that something is hidden,
+   without obscuring who it is (roughly an f/4.5–f/6.5 feel, not a frost) */
 .member-card-photo {
   position: absolute; inset: 0; background-size: cover; background-position: center;
-  filter: blur(16px) grayscale(0.4) contrast(1.05) brightness(0.78) saturate(0.7);
-  transform: scale(1.14);
+  filter: blur(5px) grayscale(0.25) contrast(1.03) brightness(0.86) saturate(0.82);
+  transform: scale(1.07);
   transition: transform 0.7s cubic-bezier(0.16, 0.8, 0.24, 1), filter 0.9s cubic-bezier(0.16, 0.8, 0.24, 1);
 }
-.member-card:hover .member-card-photo { transform: scale(1.17); }
+.member-card:hover .member-card-photo { transform: scale(1.1); }
 
 /* Click reveal: blur and frost lift cleanly, independently per card */
 .member-card.is-revealed .member-card-photo {
@@ -532,6 +702,51 @@ body {
 .member-modal-photo.member-color-red { border-color: var(--member-red); box-shadow: 0 0 34px var(--member-red-glow); }
 .member-modal-photo.member-color-gold { border-color: var(--member-gold); box-shadow: 0 0 34px var(--member-gold-glow); }
 .member-modal-photo.member-color-blue { border-color: var(--member-blue); box-shadow: 0 0 34px var(--member-blue-glow); }
+
+/* =========================================
+   MEMBER PARTICLE FIELD
+   Small, per-member-colored embers that drift out of the photo once a
+   card is unlocked — part of the same "legendary card" atmosphere as
+   the breathing glow. Individually randomized (see TeamMembersSection.jsx)
+   but weighted toward the upper-right so the field reads as directional
+   energy rather than random dust.
+========================================= */
+.member-particle-field {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+.member-card.is-revealed .member-particle-field { opacity: 1; }
+
+.member-particle {
+  position: absolute;
+  left: var(--p-left);
+  top: var(--p-top);
+  width: var(--p-size);
+  height: var(--p-size);
+  border-radius: 50%;
+  background: var(--accent-active);
+  box-shadow: 0 0 6px var(--accent-active), 0 0 2px rgba(255, 255, 255, 0.8);
+  opacity: 0;
+}
+.member-card.is-revealed .member-particle {
+  animation: member-particle-drift var(--p-dur) ease-out var(--p-delay) infinite;
+}
+
+@keyframes member-particle-drift {
+  0% { transform: translate(0, 0) scale(0.4); opacity: 0; }
+  14% { opacity: var(--p-op); transform: translate(calc(var(--p-tx) * 0.2), calc(var(--p-ty) * 0.2)) scale(0.9); }
+  62% { opacity: calc(var(--p-op) * 0.55); }
+  100% { transform: translate(var(--p-tx), var(--p-ty)) scale(1); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .member-particle-field { display: none; }
+}
 
 /* =========================================
    4. VISUALIZER COMMAND CENTER & FULLSCREEN

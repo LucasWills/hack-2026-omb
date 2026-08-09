@@ -1,8 +1,46 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import memberPhotoPlaceholder from '../assets/shinji.jpeg';
 import lucasPhoto from '../assets/Lucas.png';
 import useScrollReveal from './useScrollReveal';
 import Modal from './Modal';
+
+// Generates a set of randomized-but-directionally-biased particle configs.
+// Each particle drifts from near the character out toward the upper-right,
+// with most of the randomness happening *around* that direction rather
+// than uniformly in every direction (a few wander, very few go down/left).
+function generateParticles(count) {
+  return Array.from({ length: count }, (_, i) => {
+    const roll = Math.random();
+    let angleDeg;
+    if (roll < 0.5) {
+      angleDeg = -55 + Math.random() * 35;   // diagonal up-right (dominant)
+    } else if (roll < 0.78) {
+      angleDeg = -88 + Math.random() * 20;   // mostly straight up
+    } else if (roll < 0.94) {
+      angleDeg = -22 + Math.random() * 22;   // mostly straight right
+    } else {
+      angleDeg = 80 + Math.random() * 90;    // rare wander: down / lower-left
+    }
+    const angle = (angleDeg * Math.PI) / 180;
+    const distance = 55 + Math.random() * 135;
+    const tx = Math.cos(angle) * distance;
+    const ty = Math.sin(angle) * distance;
+
+    return {
+      id: i,
+      style: {
+        '--p-left': `${12 + Math.random() * 58}%`,
+        '--p-top': `${38 + Math.random() * 48}%`,
+        '--p-size': `${(2 + Math.random() * 3).toFixed(1)}px`,
+        '--p-tx': `${tx.toFixed(1)}px`,
+        '--p-ty': `${ty.toFixed(1)}px`,
+        '--p-dur': `${(3.4 + Math.random() * 3.8).toFixed(2)}s`,
+        '--p-delay': `${(Math.random() * 5.5).toFixed(2)}s`,
+        '--p-op': (0.35 + Math.random() * 0.5).toFixed(2),
+      },
+    };
+  });
+}
 
 // Data-driven content: Mussie -> Lucas -> Asher
 // colorKey drives each member's signature border/glow color (see member-color-* in styles.css)
@@ -35,6 +73,8 @@ const teamMembers = [
 
 function MemberCard({ member, isRevealed, onClick }) {
   const cardRef = useRef(null);
+  // Stable per-card randomization — generated once, not re-rolled on every render.
+  const particles = useMemo(() => generateParticles(16), []);
 
   const handleMove = (e) => {
     const card = cardRef.current;
@@ -66,16 +106,24 @@ function MemberCard({ member, isRevealed, onClick }) {
       onClick={() => onClick(member)}
       title={isRevealed ? member.name : 'Click to reveal'}
     >
-      <div
-        className="member-card-photo"
-        style={{ backgroundImage: `url(${member.photo})` }}
-      />
-      <div className="member-card-scrim" />
-      <div className="member-card-sheen" />
-      {!isRevealed && <span className="member-reveal-hint">Click to reveal</span>}
-      <div className="member-card-info">
-        <span className="member-role">{member.role}</span>
-        <h3 className="member-name">{member.name}</h3>
+      <div className="member-card-visual">
+        <div
+          className="member-card-photo"
+          style={{ backgroundImage: `url(${member.photo})` }}
+        />
+        <div className="member-card-scrim" />
+        <div className="member-card-sheen" />
+        {!isRevealed && <span className="member-reveal-hint">Click to reveal</span>}
+        <div className="member-card-info">
+          <span className="member-role">{member.role}</span>
+          <h3 className="member-name">{member.name}</h3>
+        </div>
+      </div>
+
+      <div className="member-particle-field" aria-hidden="true">
+        {particles.map((p) => (
+          <span key={p.id} className="member-particle" style={p.style} />
+        ))}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Sparkles, ContactShadows } from '@react-three/drei';
 import HolographicCore from './HolographicCore';
 import useScrollReveal from './useScrollReveal';
 
@@ -31,10 +32,12 @@ export default function VisualizerSection() {
     if (!isExpanded) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    document.body.classList.add('immersive-active'); // Recede the site behind the visualizer (shared layer)
     const handleEsc = (e) => { if (e.key === 'Escape') setIsExpanded(false); };
     window.addEventListener('keydown', handleEsc);
     return () => {
       document.body.style.overflow = prevOverflow;
+      document.body.classList.remove('immersive-active');
       window.removeEventListener('keydown', handleEsc);
     };
   }, [isExpanded]);
@@ -156,7 +159,7 @@ export default function VisualizerSection() {
 
   return (
     <div
-      className={`content-section visualizer-section-bg reveal ${isVisible ? 'is-visible' : ''}`}
+      className={`content-section visualizer-section-bg reveal ${isVisible ? 'is-visible' : ''} ${isExpanded ? 'is-immersive-active' : ''}`}
       ref={ref}
     >
       <div className={isExpanded ? 'visualizer-fullscreen' : 'visualizer-stage-wrapper'}>
@@ -222,7 +225,7 @@ export default function VisualizerSection() {
             </div>
             
             <div className="canvas-wrapper">
-              <Canvas camera={{ position: [0, 0, 5.5], fov: 50 }}>
+              <Canvas camera={{ position: [0, 0, isExpanded ? 6.5 : 5.5], fov: 50 }}>
                 <ambientLight intensity={0.5} />
                 <pointLight position={[10, 10, 10]} intensity={2.5} color="#ffffff" />
                 <pointLight
@@ -230,11 +233,50 @@ export default function VisualizerSection() {
                   intensity={isDataFlowing ? 3 : 1}
                   color={isDataFlowing ? "#34ff25" : "#6b46ef"}
                 />
+                {/* Rim light from behind for edge separation — cheap way to add
+                    perceived depth without a full environment map / postprocessing */}
+                <pointLight position={[0, 2, -8]} intensity={isExpanded ? 2.2 : 1.2} color="#9d5ece" />
+
                 <HolographicCore
                   frequency={hardwareData.frequency}
                   velocity={hardwareData.velocity}
                   isActive={isDataFlowing}
+                  immersive={isExpanded}
                 />
+
+                {/* Ambient depth particles — denser and further-reaching in immersive mode */}
+                <Sparkles
+                  count={isExpanded ? 90 : 40}
+                  scale={isExpanded ? 7 : 4.2}
+                  size={2.4}
+                  speed={0.25}
+                  opacity={0.5}
+                  color={isDataFlowing ? "#34ff25" : "#9d5ece"}
+                />
+
+                {/* Grounds the core with a real cast shadow instead of a flat drop-shadow */}
+                <ContactShadows
+                  position={[0, -1.8, 0]}
+                  opacity={0.45}
+                  scale={8}
+                  blur={2.6}
+                  far={3}
+                  color="#05030a"
+                />
+
+                {/* Only takes over the camera in immersive mode — a slow auto-orbit
+                    that reads as "you've activated something," while staying gentle
+                    enough not to fight the data-driven core animation */}
+                {isExpanded && (
+                  <OrbitControls
+                    enableZoom={false}
+                    enablePan={false}
+                    autoRotate
+                    autoRotateSpeed={isDataFlowing ? 1.4 : 0.6}
+                    maxPolarAngle={Math.PI / 1.6}
+                    minPolarAngle={Math.PI / 3}
+                  />
+                )}
               </Canvas>
             </div>
           </div>
