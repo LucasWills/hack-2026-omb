@@ -3,8 +3,8 @@ import { useFrame } from '@react-three/fiber';
 import { Octahedron, Torus, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 
-const IDLE_COLOR = new THREE.Color('#6b46ef');
-const ACTIVE_COLOR = new THREE.Color('#34ff25');
+const IDLE_COLOR = new THREE.Color('#6e58c9');
+const ACTIVE_COLOR = new THREE.Color('#45e83c');
 
 export default function HolographicCore({ frequency = 0, velocity = 0, isActive = false, immersive = false }) {
   const coreRef = useRef();
@@ -99,17 +99,17 @@ export default function HolographicCore({ frequency = 0, velocity = 0, isActive 
 
       {/* Rotating halo rings */}
       <Torus ref={ringARef} args={[1.9, 0.008, 8, 64]} rotation={[Math.PI / 2.4, 0, 0]}>
-        <meshBasicMaterial color="#9d5ece" transparent opacity={0.5} />
+        <meshBasicMaterial color="#a687d1" transparent opacity={0.4} />
       </Torus>
       <Torus ref={ringBRef} args={[2.15, 0.006, 8, 64]} rotation={[0, 0, Math.PI / 3]}>
-        <meshBasicMaterial color="#34ff25" transparent opacity={0.35} />
+        <meshBasicMaterial color="#45e83c" transparent opacity={0.3} />
       </Torus>
 
       {/* Wide outer ring — extra layering for a stronger sense of depth,
           especially once the core is scaled up in immersive mode */}
       {immersive && (
         <Torus ref={ringCRef} args={[2.6, 0.005, 8, 72]} rotation={[Math.PI / 5, Math.PI / 6, 0]}>
-          <meshBasicMaterial color="#9d5ece" transparent opacity={0.28} />
+          <meshBasicMaterial color="#a687d1" transparent opacity={0.24} />
         </Torus>
       )}
     </group>

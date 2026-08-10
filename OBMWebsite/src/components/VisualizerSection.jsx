@@ -263,9 +263,9 @@ export default function VisualizerSection() {
               <svg viewBox="0 0 300 300" className="halo-svg">
                 <defs>
                   <radialGradient id="haloGrad" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="rgba(52, 255, 37, 0.35)" />
-                    <stop offset="50%" stopColor="rgba(52, 255, 37, 0.15)" />
-                    <stop offset="100%" stopColor="rgba(52, 255, 37, 0)" />
+                    <stop offset="0%" stopColor="rgba(69, 232, 60, 0.28)" />
+                    <stop offset="50%" stopColor="rgba(69, 232, 60, 0.12)" />
+                    <stop offset="100%" stopColor="rgba(69, 232, 60, 0)" />
                   </radialGradient>
                 </defs>
                 <path ref={pathRef} fill="url(#haloGrad)" />
@@ -275,13 +275,13 @@ export default function VisualizerSection() {
             <div className="canvas-wrapper">
               <Canvas shadows camera={{ position: [0, 0, isExpanded ? 6.5 : 5.5], fov: 50 }}>
                 <ambientLight intensity={0.35} />
-                <directionalLight position={[6, 8, 6]} intensity={2.2} color="#ffffff" castShadow shadow-mapSize={[512, 512]} />
-                <pointLight position={[-6, -4, -6]} intensity={isDataFlowing ? 3 : 1} color={isDataFlowing ? "#34ff25" : "#6b46ef"} />
-                <pointLight position={[0, 2, -8]} intensity={isExpanded ? 2.2 : 1.2} color="#9d5ece" />
+                <directionalLight position={[6, 8, 6]} intensity={2.2} color="#f2f0f5" castShadow shadow-mapSize={[512, 512]} />
+                <pointLight position={[-6, -4, -6]} intensity={isDataFlowing ? 3 : 1} color={isDataFlowing ? "#45e83c" : "#6e58c9"} />
+                <pointLight position={[0, 2, -8]} intensity={isExpanded ? 2.2 : 1.2} color="#a687d1" />
 
                 <HolographicCore frequency={hardwareData.frequency} velocity={hardwareData.velocity} isActive={isDataFlowing} immersive={isExpanded} />
-                <Sparkles count={isExpanded ? 90 : 40} scale={isExpanded ? 7 : 4.2} size={2.4} speed={0.25} opacity={0.5} color={isDataFlowing ? "#34ff25" : "#9d5ece"} />
-                <ContactShadows position={[0, -1.8, 0]} opacity={0.45} scale={8} blur={2.6} far={3} color="#05030a" />
+                <Sparkles count={isExpanded ? 90 : 40} scale={isExpanded ? 7 : 4.2} size={2.4} speed={0.25} opacity={0.5} color={isDataFlowing ? "#45e83c" : "#a687d1"} />
+                <ContactShadows position={[0, -1.8, 0]} opacity={0.45} scale={8} blur={2.6} far={3} color="#0a0712" />
 
                 {isExpanded && (
                   <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={isDataFlowing ? 1.4 : 0.6} maxPolarAngle={Math.PI / 1.6} minPolarAngle={Math.PI / 3} />
@@ -335,7 +335,7 @@ export default function VisualizerSection() {
                 }
                 return (
                   <div className="vertical-wing-bar" key={bar.id}>
-                    <div className="vertical-wing-bar-fill" style={{ height: `${Math.max(15, intensity * 100)}%`, opacity: 0.25 + (intensity * 0.75), boxShadow: intensity > 0.3 ? '0 0 10px rgba(52, 255, 37, 0.6)' : 'none' }} />
+                    <div className="vertical-wing-bar-fill" style={{ height: `${Math.max(15, intensity * 100)}%`, opacity: 0.25 + (intensity * 0.75), boxShadow: intensity > 0.3 ? '0 0 10px rgba(69, 232, 60, 0.48)' : 'none' }} />
                   </div>
                 );
               })}
@@ -379,7 +379,7 @@ export default function VisualizerSection() {
                 }
                 return (
                   <div className="vertical-wing-bar" key={bar.id}>
-                    <div className="vertical-wing-bar-fill" style={{ height: `${Math.max(15, intensity * 100)}%`, opacity: 0.25 + (intensity * 0.75), boxShadow: intensity > 0.3 ? '0 0 10px rgba(52, 255, 37, 0.6)' : 'none' }} />
+                    <div className="vertical-wing-bar-fill" style={{ height: `${Math.max(15, intensity * 100)}%`, opacity: 0.25 + (intensity * 0.75), boxShadow: intensity > 0.3 ? '0 0 10px rgba(69, 232, 60, 0.48)' : 'none' }} />
                   </div>
                 );
               })}

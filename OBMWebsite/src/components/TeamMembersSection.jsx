@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo } from 'react';
-import memberPhotoPlaceholder from '../assets/shinji.jpeg';
+import asherPhoto from '../assets/Asher.png';
 import lucasPhoto from '../assets/Lucas.png';
 import musiePhoto from '../assets/Musie.png';
 import useScrollReveal from './useScrollReveal';
@@ -93,14 +93,25 @@ function generateEdgeEmbers(count) {
   });
 }
 
-// Data-driven content: Mussie -> Lucas -> Asher
+// Data-driven content: Asher -> Mussie -> Lucas
 // colorKey drives each member's signature border/glow color (see member-color-* in styles.css)
 // bio is an array of paragraphs so longer intros break naturally in the modal.
 const teamMembers = [
   {
+    id: 1,
+    name: "Asher Vicera",
+    role: "Front-End Developer",
+    bio: [
+      "Yo! My name is Asher, and I am an Electrical Engineering major transferring to UCLA from Los Angeles Pierce College.",
+      "I have a strong interest in photography, running, and going to the gym, and I also enjoy listening to rock and pop music."
+    ],
+    photo: asherPhoto,
+    colorKey: "blue"
+  },
+  {
     id: 3,
     name: "Mussie Yigzaw",
-    role: "Yabai",
+    role: "Build Lead",
     bio: [
       "Hey, I'm Mussie and I'm a UCLA transfer student studying mechanical engineering.",
       "Day to day, I love singing, dancing, playing video games, doom scrolling, and going to the gym. Outside of that, I love to hike and snowboard.",
@@ -112,22 +123,13 @@ const teamMembers = [
   {
     id: 2,
     name: "Lucas Wills",
-    role: "Yabai",
+    role: "Circuit Architect",
     bio: [
-      "Placeholder description detailing Lucas's contributions to the collective. Responsible for overseeing the core system architecture and prototyping workflows."
+      "I'm Lucas, a UCLA electrical engineering transfer from LA Valley College.",
+      "I enjoy building electronics, growing plants, and sometimes playing games. When it comes to music, my tastes are all over the place."
     ],
     photo: lucasPhoto,
     colorKey: "gold"
-  },
-  {
-    id: 1,
-    name: "Asher Vicera",
-    role: "Yabai",
-    bio: [
-      "Placeholder description detailing Asher's contributions to the collective. Engineered the live telemetry pipelines, UI development, and data-driven visualizers."
-    ],
-    photo: memberPhotoPlaceholder,
-    colorKey: "blue"
   }
 ];
 
@@ -165,6 +167,14 @@ function MemberCard({ member, isRevealed, onClick }) {
       onMouseMove={handleMove}
       onMouseLeave={handleLeave}
       onClick={() => onClick(member)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick(member);
+        }
+      }}
+      role="button"
+      tabIndex={0}
       title={isRevealed ? member.name : 'Click to reveal'}
     >
       <div className="member-card-visual">
@@ -182,8 +192,10 @@ function MemberCard({ member, isRevealed, onClick }) {
         </div>
       </div>
 
-      {/* Legendary-tier edge energy: aurora bloom on the border (CSS
-          pseudo-elements) plus perimeter embers drifting north-east. */}
+      {/* Legendary-tier edge energy: fiery aurora bloom on the border (CSS
+          pseudo-elements, border-clipped so it never covers the photo)
+          plus perimeter embers, both sweeping north-east. Shown as a
+          teaser on hover/keyboard focus, then permanently once revealed. */}
       <div className="member-card-edge" aria-hidden="true">
         {edgeEmbers.map((e) => (
           <span key={e.id} className="member-edge-ember" style={e.style} />
@@ -193,6 +205,36 @@ function MemberCard({ member, isRevealed, onClick }) {
       <div className="member-particle-field" aria-hidden="true">
         {particles.map((p) => (
           <span key={p.id} className="member-particle" style={p.style} />
+        ))}
+      </div>
+
+      {/* Focus-mode flare: ignites on hover/keyboard focus (not tied to
+          reveal state), a fiery border ring blending this member's color
+          with warm flame tones, traveling bottom-left to north-east — see
+          .member-card-flare in styles.css. Masked to the border only, so
+          it never dims or covers the photo. */}
+      <div className="member-card-flare" aria-hidden="true"></div>
+    </div>
+  );
+}
+
+function MemberModalPhoto({ member }) {
+  // Reuses the same NE-biased ember generator as the grid card's edge
+  // effect, just fewer of them — the modal photo is bigger, so a light
+  // scatter reads as "embers rising" without clutter. Re-rolled each time
+  // a different member's modal opens.
+  const embers = useMemo(() => generateEdgeEmbers(10), [member.id]);
+
+  return (
+    <div className="member-modal-photo-frame">
+      <img
+        src={member.photo}
+        alt={member.name}
+        className="member-modal-photo"
+      />
+      <div className="member-modal-photo-flare" aria-hidden="true">
+        {embers.map((e) => (
+          <span key={e.id} className="member-edge-ember" style={e.style} />
         ))}
       </div>
     </div>
@@ -246,11 +288,7 @@ export default function TeamMembersSection() {
              so the badge, streak, divider, portrait frame and bio rail all
              resolve from this one member's palette. */
           <div className={`member-modal-layout member-color-${selectedMember.colorKey}`}>
-            <img
-              src={selectedMember.photo}
-              alt={selectedMember.name}
-              className="member-modal-photo"
-            />
+            <MemberModalPhoto member={selectedMember} />
 
             <div className="member-modal-info">
               <span className="member-role">{selectedMember.role}</span>

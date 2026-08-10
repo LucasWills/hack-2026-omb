@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import useScrollReveal from './useScrollReveal';
 import Modal from './Modal';
-import trackPlaceholderImg from '../assets/shinji.jpeg'; 
+import billieJeanImg from '../assets/BillieJean.jpg';
+import loveSignImg from '../assets/LovePrince.jpg';
 
 const setlistTracks = [
-  { id: 1, number: "TRACK 01", title: "Billie Jean", duration: "4:54", type: "Main Set", album: "Thriller", artist: "Michael Jackson", photo: trackPlaceholderImg },
-  { id: 2, number: "TRACK 02", title: "Love Sign", duration: "4:31", type: "Main Set", album: "1-800-NEW-FUNK", artist: "Prince", photo: trackPlaceholderImg }
+  { id: 1, number: "TRACK 01", title: "Billie Jean", duration: "4:54", type: "Main Set", album: "Thriller", artist: "Michael Jackson", photo: billieJeanImg },
+  { id: 2, number: "TRACK 02", title: "Love Sign", duration: "4:31", type: "Main Set", album: "1-800-NEW-FUNK", artist: "Prince", photo: loveSignImg }
 ];
 
 export default function SetlistSection() {

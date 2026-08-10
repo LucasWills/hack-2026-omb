@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import teamPhotoPlaceholder from '../assets/shinji.jpeg';
+import teamPhoto from '../assets/Team1.png';
 import useScrollReveal from './useScrollReveal';
 
 export default function TeamPhotoSection() {
@@ -31,7 +31,7 @@ export default function TeamPhotoSection() {
           aria-label="Tap to bring photo into focus"
         >
           <img
-            src={teamPhotoPlaceholder}
+            src={teamPhoto}
             alt="One Man Band team at UCLA Hack 2026"
             className="team-photo-img"
           />
