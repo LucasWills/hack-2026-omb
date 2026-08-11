@@ -43,6 +43,28 @@ const KEYS_CONFIG = [
   { note: 'C', isBlack: false, isHigh: true }
 ];
 
+/* ─── DEMO MODE ────────────────────────────────────────────────────────────
+   Generates the exact same payload shape the Pico prints over serial:
+     { notes: ["C4","E4"], frequency: 329.63, velocity: 100 }
+   so every downstream visual behaves identically to the real hardware.
+   Delete this block plus the two marked sections below to remove it. */
+
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const midiToName = (m) => `${NOTE_NAMES[m % 12]}${Math.floor(m / 12) - 1}`;
+const midiToFreq = (m) => Math.round(440 * Math.pow(2, (m - 69) / 12) * 100) / 100;
+
+// MIDI note groups. Empty arrays are rests — they let the core settle back
+// to idle so the color cross-fade and pulse decay are visible on camera.
+const DEMO_SEQUENCE = [
+  [60], [64], [67], [72], [67], [64],
+  [60, 64, 67], [], [62, 65, 69], [],
+  [59, 62, 67], [60, 64, 72], [], [],
+];
+
+const DEMO_STEP_MS = 220; // ~150 for a more energetic recording
+
+/* ─── END DEMO MODE CONSTANTS ─────────────────────────────────────────── */
+
 export default function VisualizerSection() {
   const [ref, isVisible] = useScrollReveal();
   const [hardwareData, setHardwareData] = useState({ notes: [], frequency: 0, velocity: 0 });
@@ -50,11 +72,15 @@ export default function VisualizerSection() {
   const [isDataFlowing, setIsDataFlowing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // DEMO MODE state
+  const [isDemo, setIsDemo] = useState(false);
+  const demoTimerRef = useRef(null);
+
   useEffect(() => {
     if (!isExpanded) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    document.body.classList.add('immersive-active'); 
+    document.body.classList.add('immersive-active');
     const handleEsc = (e) => { if (e.key === 'Escape') setIsExpanded(false); };
     window.addEventListener('keydown', handleEsc);
     return () => {
@@ -68,14 +94,14 @@ export default function VisualizerSection() {
   const pathRef = useRef(null);
   const leftCircleRef = useRef(null);
   const rightCircleRef = useRef(null);
-  
+
   const currentAmp = useRef(0);
   const targetAmp = useRef(0);
   const currentFreq = useRef(3);
   const targetFreq = useRef(3);
   const phase = useRef(0);
   const ambientRotation = useRef(0);
-  
+
   const noteFreqHz = useRef(0);
   const freqBarElsRef = useRef([]);
   const freqAmpsRef = useRef(new Float32Array(FREQ_GRAPH_BARS));
@@ -115,6 +141,39 @@ export default function VisualizerSection() {
     }
   };
 
+  /* ─── DEMO MODE handlers ────────────────────────────────────────────── */
+
+  const startDemo = () => {
+    if (demoTimerRef.current) return;
+    setIsDemo(true);
+    setIsConnected(true);
+    let i = 0;
+    demoTimerRef.current = setInterval(() => {
+      const notes = DEMO_SEQUENCE[i++ % DEMO_SEQUENCE.length];
+      const top = notes.length ? notes[notes.length - 1] : null;
+      setHardwareData({
+        notes: notes.map(midiToName),
+        frequency: top ? midiToFreq(top) : 0,
+        velocity: notes.length ? 100 : 0,
+      });
+      setIsDataFlowing(notes.length > 0);
+    }, DEMO_STEP_MS);
+  };
+
+  const stopDemo = () => {
+    clearInterval(demoTimerRef.current);
+    demoTimerRef.current = null;
+    setIsDemo(false);
+    setIsConnected(false);
+    setHardwareData({ notes: [], frequency: 0, velocity: 0 });
+    setIsDataFlowing(false);
+  };
+
+  // Clear the interval if the section unmounts mid-demo
+  useEffect(() => () => clearInterval(demoTimerRef.current), []);
+
+  /* ─── END DEMO MODE handlers ────────────────────────────────────────── */
+
   const frequencyBars = FREQUENCY_BARS;
 
   useEffect(() => {
@@ -137,14 +196,14 @@ export default function VisualizerSection() {
       currentFreq.current += diffFreq * 0.05;
 
       phase.current += 0.015 + (currentAmp.current * 0.03);
-      
+
       // Dynamically accelerate the ambient side elements
       ambientRotation.current += 0.3 + (currentAmp.current * 3.5);
 
       if (dashboardRef.current) {
         dashboardRef.current.style.setProperty('--smooth-amp', currentAmp.current);
       }
-      
+
       if (leftCircleRef.current) leftCircleRef.current.style.transform = `rotate(${ambientRotation.current}deg)`;
       if (rightCircleRef.current) rightCircleRef.current.style.transform = `rotate(-${ambientRotation.current}deg)`;
 
@@ -202,9 +261,13 @@ export default function VisualizerSection() {
   }, []);
 
   const normalizedAmp = isDataFlowing ? Math.min(1, (hardwareData.velocity || 127) / 127) : 0;
-  
+
   // Extract just the notes array for the multi-key keyboard check
   const activeNotes = hardwareData.notes || [];
+
+  // Note names with the octave digit stripped: "C#4" -> "C#". Compared with
+  // strict equality below so a C# no longer also lights the natural C key.
+  const activePitchClasses = activeNotes.map((n) => n.replace(/\d+$/, ''));
 
   const dashboardContent = (
     <>
@@ -226,7 +289,12 @@ export default function VisualizerSection() {
           {isConnected ? 'LIVE' : 'STAND BY...'}
         </h2>
         <p className="section-subtitle">
-          Status: {isConnected ? <span className="status-live">LINK ACTIVE (A0 - C8, 88-Key Range)</span> : <span className="status-down">DISCONNECTED</span>}
+          Status:{' '}
+          {isDemo
+            ? <span className="status-live">SIMULATED INPUT (demo sequence)</span>
+            : isConnected
+              ? <span className="status-live">LINK ACTIVE (A0 - C8, 88-Key Range)</span>
+              : <span className="status-down">DISCONNECTED</span>}
         </p>
 
         <div className="visualizer-header-actions">
@@ -235,6 +303,14 @@ export default function VisualizerSection() {
               CONNECT HARDWARE
             </button>
           )}
+
+          {/* DEMO MODE toggle */}
+          {(!isConnected || isDemo) && (
+            <button className="connect-btn" onClick={isDemo ? stopDemo : startDemo}>
+              {isDemo ? 'STOP DEMO' : 'DEMO MODE'}
+            </button>
+          )}
+
           <button
             className="visualizer-expand-btn"
             onClick={() => setIsExpanded((v) => !v)}
@@ -271,7 +347,7 @@ export default function VisualizerSection() {
                 <path ref={pathRef} fill="url(#haloGrad)" />
               </svg>
             </div>
-            
+
             <div className="canvas-wrapper">
               <Canvas shadows camera={{ position: [0, 0, isExpanded ? 6.5 : 5.5], fov: 50 }}>
                 <ambientLight intensity={0.35} />
@@ -351,9 +427,9 @@ export default function VisualizerSection() {
               <div className="piano-keyboard">
                 {KEYS_CONFIG.map((k, index) => {
                   const displayNote = `${k.note}4`;
-                  
-                  // Highlight the key if it exists in the active notes array
-                  const isActive = activeNotes.some(n => n.startsWith(k.note)) && isDataFlowing;
+
+                  // Exact pitch-class match, so C# no longer lights up C
+                  const isActive = activePitchClasses.includes(k.note) && isDataFlowing;
 
                   if (k.isBlack) {
                     return (
