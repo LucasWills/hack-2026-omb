@@ -27,21 +27,49 @@ const FREQ_GRAPH_BANDS = Array.from({ length: FREQ_GRAPH_BARS }, (_, i) => {
   return { id: i, center: Math.sqrt(lowFreq * highFreq) };
 });
 
+// The array index IS the semitone offset from the low C (0-12), which is what
+// the key-highlight logic matches against. octave is display only.
 const KEYS_CONFIG = [
-  { note: 'C', isBlack: false },
-  { note: 'C#', isBlack: true, left: 8.75 },
-  { note: 'D', isBlack: false },
-  { note: 'D#', isBlack: true, left: 21.25 },
-  { note: 'E', isBlack: false },
-  { note: 'F', isBlack: false },
-  { note: 'F#', isBlack: true, left: 46.25 },
-  { note: 'G', isBlack: false },
-  { note: 'G#', isBlack: true, left: 58.75 },
-  { note: 'A', isBlack: false },
-  { note: 'A#', isBlack: true, left: 71.25 },
-  { note: 'B', isBlack: false },
-  { note: 'C', isBlack: false, isHigh: true }
+  { note: 'C', isBlack: false, octave: 4 },
+  { note: 'C#', isBlack: true, left: 8.75, octave: 4 },
+  { note: 'D', isBlack: false, octave: 4 },
+  { note: 'D#', isBlack: true, left: 21.25, octave: 4 },
+  { note: 'E', isBlack: false, octave: 4 },
+  { note: 'F', isBlack: false, octave: 4 },
+  { note: 'F#', isBlack: true, left: 46.25, octave: 4 },
+  { note: 'G', isBlack: false, octave: 4 },
+  { note: 'G#', isBlack: true, left: 58.75, octave: 4 },
+  { note: 'A', isBlack: false, octave: 4 },
+  { note: 'A#', isBlack: true, left: 71.25, octave: 4 },
+  { note: 'B', isBlack: false, octave: 4 },
+  { note: 'C', isBlack: false, isHigh: true, octave: 5 }
 ];
+
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+// "C#4" -> 61. Returns null on anything unparseable so a malformed serial
+// line can't poison the keyboard or the graph.
+const nameToMidi = (name) => {
+  const m = /^([A-G]#?)(-?\d+)$/.exec(String(name).trim());
+  if (!m) return null;
+  const idx = NOTE_NAMES.indexOf(m[1]);
+  if (idx < 0) return null;
+  return idx + (parseInt(m[2], 10) + 1) * 12;
+};
+
+const nameToFreq = (name) => {
+  const midi = nameToMidi(name);
+  return midi == null ? 0 : 440 * Math.pow(2, (midi - 69) / 12);
+};
+
+// Synths 0 and 2 press each key twice — once at pitch, once an octave down.
+// A note is treated as one of those shadow copies when the note exactly 12
+// semitones above it is also sounding, so only the key you actually pressed
+// ends up lit.
+const pressedMidiNotes = (noteNames) => {
+  const held = new Set(noteNames.map(nameToMidi).filter((m) => m != null));
+  return [...held].filter((m) => !held.has(m + 12));
+};
 
 /* ─── DEMO MODE ────────────────────────────────────────────────────────────
    Generates the exact same payload shape the Pico prints over serial:
@@ -49,19 +77,33 @@ const KEYS_CONFIG = [
    so every downstream visual behaves identically to the real hardware.
    Delete this block plus the two marked sections below to remove it. */
 
-const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const midiToName = (m) => `${NOTE_NAMES[m % 12]}${Math.floor(m / 12) - 1}`;
 const midiToFreq = (m) => Math.round(440 * Math.pow(2, (m - 69) / 12) * 100) / 100;
 
 // MIDI note groups. Empty arrays are rests — they let the core settle back
 // to idle so the color cross-fade and pulse decay are visible on camera.
+// Sweeps most of the piano range so the log-scaled response graph fills end
+// to end instead of clustering around middle C.
+// Never put a note and its exact octave in the same group: the doubling
+// filter above reads the lower one as a shadow copy and drops it.
 const DEMO_SEQUENCE = [
-  [60], [64], [67], [72], [67], [64],
-  [60, 64, 67], [], [62, 65, 69], [],
-  [59, 62, 67], [60, 64, 72], [], [],
+  // low sweep up
+  [24], [31], [36], [43], [48], [55],
+  // mid
+  [60], [64], [67], [71],
+  // high sweep up
+  [76], [79], [84], [88], [91], [96],
+  [],
+  // wide-interval chords — peaks land far apart on the graph
+  [36, 55, 76], [],
+  [41, 60, 79], [],
+  [28, 47, 66, 85], [],
+  // descending run back down
+  [96], [88], [79], [71], [60], [50], [40], [31],
+  [], [],
 ];
 
-const DEMO_STEP_MS = 220; // ~150 for a more energetic recording
+const DEMO_STEP_MS = 420; // ~150 for energetic, ~600 for slow and deliberate
 
 /* ─── END DEMO MODE CONSTANTS ─────────────────────────────────────────── */
 
@@ -71,6 +113,12 @@ export default function VisualizerSection() {
   const [isConnected, setIsConnected] = useState(false);
   const [isDataFlowing, setIsDataFlowing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Which of the 13 keys are lit, as semitone offsets 0-12
+  const [activeKeys, setActiveKeys] = useState([]);
+  // MIDI number the leftmost key currently represents. Starts at C4 and
+  // follows the instrument's octave buttons — see the effect below.
+  const baseMidiRef = useRef(60);
 
   // DEMO MODE state
   const [isDemo, setIsDemo] = useState(false);
@@ -102,7 +150,9 @@ export default function VisualizerSection() {
   const phase = useRef(0);
   const ambientRotation = useRef(0);
 
-  const noteFreqHz = useRef(0);
+  // Every currently-held note as Hz, not just the top one — this is what
+  // gives the response graph a peak per note instead of a single peak.
+  const activeFreqsRef = useRef([]);
   const freqBarElsRef = useRef([]);
   const freqAmpsRef = useRef(new Float32Array(FREQ_GRAPH_BARS));
 
@@ -176,15 +226,51 @@ export default function VisualizerSection() {
 
   const frequencyBars = FREQUENCY_BARS;
 
+  // Full note list for the text readout
+  const activeNotes = hardwareData.notes || [];
+
+  // Hz for every held note. Derived from the note names the Pico already
+  // sends, so no firmware change is needed.
+  const activeFreqs = activeNotes.map(nameToFreq).filter((f) => f > 0);
+
+  // Map held notes onto the 13-key strip by absolute pitch, so C4 lights the
+  // left C and C5 lights the right C — never both.
+  useEffect(() => {
+    const pressed = pressedMidiNotes(activeNotes);
+    if (!pressed.length || !isDataFlowing) {
+      setActiveKeys([]);
+      return;
+    }
+
+    // The octave buttons shift everything by +/-12, and the site is never
+    // told the current shift. Infer it: keep the existing window while the
+    // notes still fit inside it, and re-anchor to the lowest note when they
+    // fall outside. Self-corrects within one keypress of an octave change.
+    const low = Math.min(...pressed);
+    const high = Math.max(...pressed);
+    let base = baseMidiRef.current;
+    if (low < base || high > base + 12) {
+      base = 12 * Math.floor(low / 12);
+      baseMidiRef.current = base;
+    }
+
+    setActiveKeys(pressed.map((m) => m - base).filter((i) => i >= 0 && i <= 12));
+  }, [hardwareData, isDataFlowing]);
+
   useEffect(() => {
     targetAmp.current = isDataFlowing ? Math.min(1, (hardwareData.velocity || 127) / 127) : 0;
+    activeFreqsRef.current = isDataFlowing
+      ? (hardwareData.notes || []).map(nameToFreq).filter((f) => f > 0)
+      : [];
+
+    // The halo waveform still follows the top note — a single closed wave can
+    // only have one lobe count, so blending several notes just muddies it.
     const freq = hardwareData.frequency || 0;
     if (freq > 0 && isDataFlowing) {
       const t = Math.max(0, Math.min(1, Math.log2(freq / 27) / Math.log2(4186 / 27)));
       targetFreq.current = 3 + (t * 11);
-      noteFreqHz.current = freq;
     }
-  }, [hardwareData.velocity, hardwareData.frequency, isDataFlowing]);
+  }, [hardwareData, isDataFlowing]);
 
   useEffect(() => {
     let frameId;
@@ -234,14 +320,20 @@ export default function VisualizerSection() {
       const bars = freqBarElsRef.current;
       if (bars.length) {
         const amps = freqAmpsRef.current;
-        const freqHz = noteFreqHz.current;
+        const freqs = activeFreqsRef.current;
         const activeAmp = currentAmp.current;
         for (let i = 0; i < FREQ_GRAPH_BARS; i++) {
           let target = 0.05;
-          if (freqHz > 0 && activeAmp > 0.01) {
-            const semitoneDist = Math.abs(12 * Math.log2(FREQ_GRAPH_BANDS[i].center / freqHz));
-            if (semitoneDist < 14) {
-              target = Math.max(0.05, 1 - semitoneDist / 14) * activeAmp;
+          if (freqs.length && activeAmp > 0.01) {
+            // Strongest contribution across every held note, so a three-note
+            // chord produces three peaks instead of one.
+            const center = FREQ_GRAPH_BANDS[i].center;
+            for (let n = 0; n < freqs.length; n++) {
+              const semitoneDist = Math.abs(12 * Math.log2(center / freqs[n]));
+              if (semitoneDist < 14) {
+                const v = Math.max(0.05, 1 - semitoneDist / 14) * activeAmp;
+                if (v > target) target = v;
+              }
             }
           }
           const cur = amps[i];
@@ -262,12 +354,20 @@ export default function VisualizerSection() {
 
   const normalizedAmp = isDataFlowing ? Math.min(1, (hardwareData.velocity || 127) / 127) : 0;
 
-  // Extract just the notes array for the multi-key keyboard check
-  const activeNotes = hardwareData.notes || [];
-
-  // Note names with the octave digit stripped: "C#4" -> "C#". Compared with
-  // strict equality below so a C# no longer also lights the natural C key.
-  const activePitchClasses = activeNotes.map((n) => n.replace(/\d+$/, ''));
+  // Wing bar intensity, evaluated against every held note rather than the
+  // single top frequency.
+  const wingIntensity = (barCenter) => {
+    if (!isDataFlowing || !activeFreqs.length) return 0.08;
+    let best = 0.08;
+    for (const f of activeFreqs) {
+      const dist = Math.abs(12 * Math.log2(barCenter / f));
+      if (dist < 18) {
+        const v = Math.max(0.08, 1 - (dist / 18)) * normalizedAmp;
+        if (v > best) best = v;
+      }
+    }
+    return best;
+  };
 
   const dashboardContent = (
     <>
@@ -404,11 +504,7 @@ export default function VisualizerSection() {
           <div className="piano-framing-grid">
             <div className="frequency-wing left-wing">
               {frequencyBars.filter(b => b.side === 'left').map((bar) => {
-                let intensity = 0.08;
-                if (isDataFlowing && hardwareData.frequency > 0) {
-                  const dist = Math.abs(12 * Math.log2(bar.center / hardwareData.frequency));
-                  if (dist < 18) intensity = Math.max(0.08, 1 - (dist / 18)) * normalizedAmp;
-                }
+                const intensity = wingIntensity(bar.center);
                 return (
                   <div className="vertical-wing-bar" key={bar.id}>
                     <div className="vertical-wing-bar-fill" style={{ height: `${Math.max(15, intensity * 100)}%`, opacity: 0.25 + (intensity * 0.75), boxShadow: intensity > 0.3 ? '0 0 10px rgba(69, 232, 60, 0.48)' : 'none' }} />
@@ -426,33 +522,26 @@ export default function VisualizerSection() {
 
               <div className="piano-keyboard">
                 {KEYS_CONFIG.map((k, index) => {
-                  const displayNote = `${k.note}4`;
-
-                  // Exact pitch-class match, so C# no longer lights up C
-                  const isActive = activePitchClasses.includes(k.note) && isDataFlowing;
+                  // Matched by semitone offset, so C4 lights only the left C
+                  // and C5 only the right one. Keys are unlabelled — the NOTES
+                  // readout above already names whatever is sounding.
+                  const isActive = activeKeys.includes(index);
 
                   if (k.isBlack) {
                     return (
                       <div key={index} className={`synth-key black-key ${isActive ? 'key-active' : ''}`} style={{ left: `${k.left}%` }} />
                     );
-                  } else {
-                    return (
-                      <div key={index} className={`synth-key white-key ${isActive ? 'key-active' : ''}`}>
-                        <span className="note-label">{displayNote}</span>
-                      </div>
-                    );
                   }
+                  return (
+                    <div key={index} className={`synth-key white-key ${isActive ? 'key-active' : ''}`} />
+                  );
                 })}
               </div>
             </div>
 
             <div className="frequency-wing right-wing">
               {frequencyBars.filter(b => b.side === 'right').map((bar) => {
-                let intensity = 0.08;
-                if (isDataFlowing && hardwareData.frequency > 0) {
-                  const dist = Math.abs(12 * Math.log2(bar.center / hardwareData.frequency));
-                  if (dist < 18) intensity = Math.max(0.08, 1 - (dist / 18)) * normalizedAmp;
-                }
+                const intensity = wingIntensity(bar.center);
                 return (
                   <div className="vertical-wing-bar" key={bar.id}>
                     <div className="vertical-wing-bar-fill" style={{ height: `${Math.max(15, intensity * 100)}%`, opacity: 0.25 + (intensity * 0.75), boxShadow: intensity > 0.3 ? '0 0 10px rgba(69, 232, 60, 0.48)' : 'none' }} />

@@ -370,15 +370,14 @@ body.immersive-active .immersive-dim-overlay { opacity: 1; }
 .freq-response-range-label { display: flex; justify-content: space-between; font-family: monospace; font-size: 0.62rem; letter-spacing: 1.5px; color: rgba(169, 232, 194, 0.4); padding: 0 4px; margin-bottom: 0.4rem; text-transform: uppercase; }
 
 .keyboard-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 600px; min-width: 0; margin: 0 auto; }
-.piano-keyboard { display: flex; flex-direction: row; position: relative; width: 100%; min-width: 0; height: clamp(100px, 20vw, 220px); background: rgba(255, 255, 255, 0.02); border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.08); }
+.piano-keyboard { display: flex; flex-direction: row; position: relative; width: 100%; min-width: 0; height: clamp(100px, 20vw, 220px); background: rgba(255, 255, 255, 0.02); border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.08); overflow: hidden; }
 .synth-key { transition: all 0.1s ease-out; box-sizing: border-box; }
-.white-key { position: relative; flex: 1 1 0; min-width: 0; height: 100%; background-color: #1a1625; border-right: 1px solid #3a3253; color: #6c638e; display: flex; align-items: flex-end; justify-content: center; padding-bottom: clamp(10px, 2vh, 18px); margin: 0; }
+.white-key { position: relative; flex: 1 1 0; min-width: 0; height: 100%; background-color: #1a1625; border-right: 1px solid #3a3253; margin: 0; }
 .white-key:first-of-type { border-left: 1px solid #3a3253; border-bottom-left-radius: 6px; }
 .white-key:last-of-type { border-right: none; border-bottom-right-radius: 6px; }
-.black-key { position: absolute; top: 0; width: 7.5%; height: 60%; background-color: #0b0716; border: 1px solid #6e58c9; border-top: none; color: #4a3b7d; z-index: 10; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; margin: 0; }
-.note-label { font-size: clamp(0.6rem, 1.6vw, 0.85rem); font-weight: 700; pointer-events: none; color: #a39abc; }
+.black-key { position: absolute; top: 0; width: 7.5%; height: 60%; background-color: #0b0716; border: 1px solid #6e58c9; border-top: none; z-index: 10; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; margin: 0; }
 .white-key::after, .black-key::after { content: ''; position: absolute; inset: -16px; border-radius: 50%; background: radial-gradient(circle, rgba(63, 210, 77, 0.48) 0%, rgba(63, 210, 77, 0) 72%); opacity: 0; transform: scale(0.6); transition: opacity 0.15s ease-out, transform 0.15s ease-out; pointer-events: none; z-index: -1; }
-.key-active { background-color: var(--accent-green) !important; color: #000 !important; box-shadow: 0 0 18px rgba(63, 210, 77, 0.55) !important; transform: translateY(3px); }
+.key-active { background-color: var(--accent-green) !important; box-shadow: 0 0 18px rgba(63, 210, 77, 0.55) !important; transform: translateY(3px); }
 .key-active::after { opacity: 1; transform: scale(1.2); }
 
 .key-particle-strip { position: relative; width: 100%; height: 26px; margin: 0 auto; overflow: hidden; pointer-events: none; }
